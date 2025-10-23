@@ -1,0 +1,408 @@
+# ---------- file: pyproject.toml ----------
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "pdbstats"
+version = "0.1.0"
+description = "Tiny toolkit to compute per-residue/global RMSD and pLDDT statistics from predicted PDBs and plot them"
+authors = [{ name = "Your Name" }]
+requires-python = ">=3.9"
+dependencies = [
+  "biopython>=1.79",
+  "pandas>=1.5",
+  "numpy>=1.23",
+  "matplotlib>=3.7",
+  "seaborn>=0.12",
+  "typer>=0.9"
+]
+
+[project.scripts]
+pdbstats = "pdbstats.cli:app"
+
+
+# ---------- file: src/pdbstats/__init__.py ----------
+from .core import per_residue_rmsd, per_residue_plddt, global_rmsd
+from .io import parse_structure, select_chain
+
+__all__ = [
+    "per_residue_rmsd",
+    "per_residue_plddt",
+    "global_rmsd",
+    "parse_structure",
+    "select_chain",
+]
+
+
+# ---------- file: src/pdbstats/io.py ----------
+from __future__ import annotations
+from pathlib import Path
+from typing import Optional, Union
+from Bio.PDB import PDBParser, MMCIFParser, Structure, Model, Chain
+
+PathLike = Union[str, Path]
+
+
+def parse_structure(path: PathLike) -> Structure.Structure:
+    """Load a PDB/mmCIF file to a Biopython Structure.
+
+    Chooses parser from file suffix. Quiet by default.
+    """
+    p = Path(path)
+    if p.suffix.lower() == ".pdb":
+        parser = PDBParser(QUIET=True)
+    else:
+        parser = MMCIFParser(QUIET=True)
+    return parser.get_structure(p.stem, str(p))
+
+
+def _first_model(structure: Structure.Structure) -> Model.Model:
+    return next(structure.get_models())
+
+
+def _first_chain(model: Model.Model) -> Chain.Chain:
+    return next(model.get_chains())
+
+
+def select_chain(
+    obj: Union[Structure.Structure, Model.Model, Chain.Chain],
+    chain_id: Optional[str] = None,
+) -> Chain.Chain:
+    """Return a Chain from Structure/Model/Chain.
+
+    - If `obj` is a Structure: take first model, then matching chain_id or first chain.
+    - If `obj` is a Model: take matching chain_id or first chain.
+    - If `obj` is a Chain: return it (ignoring chain_id).
+    """
+    if isinstance(obj, Chain.Chain):
+        return obj
+    if isinstance(obj, Structure.Structure):
+        model = _first_model(obj)
+    elif isinstance(obj, Model.Model):
+        model = obj
+    else:
+        raise TypeError(f"Unsupported object type: {type(obj)}")
+
+    if chain_id is None:
+        return _first_chain(model)
+
+    for ch in model.get_chains():
+        if ch.id == chain_id:
+            return ch
+    raise ValueError(f"Chain '{chain_id}' not found; available: {[c.id for c in model.get_chains()]}.")
+
+
+# ---------- file: src/pdbstats/core.py ----------
+from __future__ import annotations
+from typing import Iterable, List, Sequence, Tuple
+import numpy as np
+import pandas as pd
+from Bio.PDB import Chain, Residue, Atom, Superimposer
+from Bio import pairwise2
+from Bio.Data.IUPACData import protein_letters_3to1
+
+# --- helpers -----------------------------------------------------------------
+
+AA_OVERRIDES = {
+    "MSE": "MET",  # Selenomethionine → MET
+    "SEC": "CYS",  # Selenocysteine → CYS (approximate)
+    "PYL": "LYS",  # Pyrrolysine → LYS (approximate)
+}
+
+
+def _res_name_1(r: Residue.Residue) -> str:
+    name3 = (r.get_resname() or "").upper()
+    name3 = AA_OVERRIDES.get(name3, name3).capitalize()
+    return protein_letters_3to1.get(name3, "X")
+
+
+def _seq_from_chain(chain: Chain.Chain) -> str:
+    return "".join(_res_name_1(r) for r in chain.get_residues())
+
+
+def _resid_tuple(r: Residue.Residue) -> Tuple[str, int, str]:
+    het, resseq, icode = r.get_id()
+    return het, int(resseq), icode or ""
+
+
+def _ca_atoms(residues: Sequence[Residue.Residue]) -> List[Atom.Atom]:
+    return [r["CA"] for r in residues if "CA" in r]
+
+
+def _rmsd_between_residues(ref_r: Residue.Residue, pred_r: Residue.Residue) -> float:
+    names = set(a.get_name() for a in ref_r) & set(a.get_name() for a in pred_r)
+    if not names:
+        return np.nan
+    diffs_sq = []
+    for n in names:
+        v = ref_r[n].get_coord() - pred_r[n].get_coord()
+        diffs_sq.append(np.dot(v, v))
+    return float(np.sqrt(np.mean(diffs_sq)))
+
+
+def _align_pairs(ref: Chain.Chain, pred: Chain.Chain) -> List[Tuple[int, int]]:
+    """Return aligned *indices into residue lists* (ref_i, pred_j) excluding gaps.
+
+    Uses a simple global alignment (match=2, mismatch=-1, gap_open=-5, gap_ext=-0.5).
+    """
+    A = _seq_from_chain(ref)
+    B = _seq_from_chain(pred)
+    aln = pairwise2.align.globalms(A, B, 2, -1, -5, -0.5, one_alignment_only=True)[0]
+    pairs: List[Tuple[int, int]] = []
+    i = j = 0
+    for a, b in zip(aln.seqA, aln.seqB):
+        if a != "-" and b != "-":
+            pairs.append((i, j))
+        if a != "-":
+            i += 1
+        if b != "-":
+            j += 1
+    return pairs
+
+
+def _superpose_on_ca(ref_res: Sequence[Residue.Residue], pred_res: Sequence[Residue.Residue], pairs: List[Tuple[int, int]]):
+    """Compute superposition on matched CA atoms and APPLY to all atoms in pred chain.
+
+    NOTE: This *modifies coordinates* of the provided `pred_res` atoms in-place.
+    """
+    ref_cas = []
+    pred_cas = []
+    for ri, pj in pairs:
+        if "CA" in ref_res[ri] and "CA" in pred_res[pj]:
+            ref_cas.append(ref_res[ri]["CA"]) 
+            pred_cas.append(pred_res[pj]["CA"]) 
+    if not ref_cas or not pred_cas:
+        return
+    sup = Superimposer()
+    sup.set_atoms(ref_cas, pred_cas)
+    # apply transform to every atom in pred residues
+    all_pred_atoms: List[Atom.Atom] = [a for r in pred_res for a in r.get_atoms()]
+    sup.apply(all_pred_atoms)
+
+
+# --- public API --------------------------------------------------------------
+
+def per_residue_rmsd(ref_chain: Chain.Chain, pred_chain: Chain.Chain) -> pd.DataFrame:
+    """Compute per-residue RMSD for *aligned* residue pairs between `ref_chain` and `pred_chain`.
+
+    Returns a DataFrame with columns:
+    - aln_idx: 1..N along the alignment (no gaps)
+    - ref_resseq: residue number in the reference chain (resseq)
+    - pred_resseq: residue number in the predicted chain (resseq)
+    - ref_aa / pred_aa: one-letter codes
+    - RMSD: Å, using shared atom names per residue
+
+    Notes:
+    - The function aligns sequences, superposes on matched CA atoms, then computes per-residue RMSD.
+    - Coordinates of `pred_chain` are modified in-place by the superposition.
+    """
+    ref_res = list(ref_chain.get_residues())
+    pred_res = list(pred_chain.get_residues())
+    pairs = _align_pairs(ref_chain, pred_chain)
+    _superpose_on_ca(ref_res, pred_res, pairs)
+
+    rows = []
+    for k, (ri, pj) in enumerate(pairs, start=1):
+        r_ref = ref_res[ri]
+        r_pred = pred_res[pj]
+        het_r, resseq_r, ic_r = _resid_tuple(r_ref)
+        het_p, resseq_p, ic_p = _resid_tuple(r_pred)
+        rows.append(
+            {
+                "aln_idx": k,
+                "ref_resseq": resseq_r,
+                "pred_resseq": resseq_p,
+                "ref_aa": _res_name_1(r_ref),
+                "pred_aa": _res_name_1(r_pred),
+                "RMSD": _rmsd_between_residues(r_ref, r_pred),
+            }
+        )
+    return pd.DataFrame(rows)
+
+
+def per_residue_plddt(pred_chain: Chain.Chain) -> pd.DataFrame:
+    """Extract per-residue pLDDT from CA B-factors of a *predicted* chain.
+
+    Returns DataFrame with columns:
+    - pred_resseq: residue number from the chain
+    - pLDDT: float (taken from CA B-factor)
+    """
+    rows = []
+    for r in pred_chain.get_residues():
+        if "CA" not in r:
+            continue
+        _, resseq, _ = _resid_tuple(r)
+        rows.append({"pred_resseq": resseq, "pLDDT": float(r["CA"].get_bfactor())})
+    return pd.DataFrame(rows)
+
+
+def global_rmsd(ref_chain: Chain.Chain, pred_chain: Chain.Chain) -> float:
+    """Global RMSD after CA superposition on aligned pairs (Å)."""
+    ref_res = list(ref_chain.get_residues())
+    pred_res = list(pred_chain.get_residues())
+    pairs = _align_pairs(ref_chain, pred_chain)
+    _superpose_on_ca(ref_res, pred_res, pairs)
+
+    # Compute RMSD on the matched CA atoms used for superposition
+    ref_cas, pred_cas = [], []
+    for ri, pj in pairs:
+        if "CA" in ref_res[ri] and "CA" in pred_res[pj]:
+            ref_cas.append(ref_res[ri]["CA"])
+            pred_cas.append(pred_res[pj]["CA"])
+    if not ref_cas:
+        return float("nan")
+    diffs = [(a.get_coord() - b.get_coord()) for a, b in zip(ref_cas, pred_cas)]
+    return float(np.sqrt(np.mean([np.dot(d, d) for d in diffs])))
+
+
+# ---------- file: src/pdbstats/plots.py ----------
+from __future__ import annotations
+import pandas as pd
+import matplotlib.pyplot as plt
+import seaborn as sns
+
+
+def line_rmsd(df_long: pd.DataFrame, out_png: str, *, hue: str = "label") -> None:
+    """Line plot of per-residue RMSD vs alignment index.
+
+    Expected columns: aln_idx, RMSD, and a grouping column (default "label").
+    """
+    ax = sns.lineplot(data=df_long, x="aln_idx", y="RMSD", hue=hue)
+    ax.set_xlabel("Alignment index")
+    ax.set_ylabel("Per-residue RMSD (Å)")
+    ax.figure.tight_layout()
+    ax.figure.savefig(out_png, dpi=300)
+    plt.close(ax.figure)
+
+
+def scatter_rmsd_vs_plddt(df_merge: pd.DataFrame, out_png: str, *, hue: str = "label") -> None:
+    """Scatter plot of per-residue RMSD vs pLDDT.
+
+    Expected columns: pLDDT, RMSD, and a grouping column (default "label").
+    """
+    ax = sns.scatterplot(data=df_merge, x="pLDDT", y="RMSD", hue=hue, s=12, alpha=0.7)
+    ax.set_xlabel("pLDDT")
+    ax.set_ylabel("Per-residue RMSD (Å)")
+    ax.figure.tight_layout()
+    ax.figure.savefig(out_png, dpi=300)
+    plt.close(ax.figure)
+
+
+# ---------- file: src/pdbstats/cli.py ----------
+from __future__ import annotations
+from pathlib import Path
+from typing import List, Optional
+import pandas as pd
+import typer
+from Bio.PDB import Chain
+
+from .io import parse_structure, select_chain
+from .core import per_residue_rmsd, per_residue_plddt, global_rmsd
+from .plots import line_rmsd, scatter_rmsd_vs_plddt
+
+app = typer.Typer(add_completion=False, help="Compute RMSD/pLDDT stats from predicted PDBs and plot them.")
+
+
+@app.command()
+def compare(
+    ref: Path = typer.Option(..., exists=True, readable=True, help="Reference PDB/mmCIF file."),
+    pred: List[Path] = typer.Option(..., exists=True, readable=True, help="One or more predicted PDB/mmCIF files."),
+    outdir: Path = typer.Option(Path("outputs"), help="Directory for CSVs and plots."),
+    chain_id: Optional[str] = typer.Option(None, help="Chain ID to use (applied to ref and preds)."),
+    labels: Optional[List[str]] = typer.Option(None, help="Optional labels for predictions (same length as --pred)."),
+):
+    """Compute per-residue RMSD + pLDDT, save CSVs, and produce two basic plots."""
+    outdir.mkdir(parents=True, exist_ok=True)
+
+    # Load reference chain (object-first API)
+    ref_chain: Chain.Chain = select_chain(parse_structure(ref), chain_id)
+
+    # Compose labels
+    if labels and len(labels) != len(pred):
+        raise typer.BadParameter("--labels must have the same number of items as --pred.")
+    used_labels = labels or [p.stem for p in pred]
+
+    all_rmsd = []
+    all_plddt = []
+    tm_rows = []
+
+    for p, label in zip(pred, used_labels):
+        pred_chain: Chain.Chain = select_chain(parse_structure(p), chain_id)
+
+        rmsd_df = per_residue_rmsd(ref_chain, pred_chain).assign(label=label)
+        plddt_df = per_residue_plddt(pred_chain).assign(label=label)
+
+        all_rmsd.append(rmsd_df)
+        all_plddt.append(plddt_df)
+
+        # Simple global RMSD (optional):
+        tm_rows.append({"label": label, "global_RMSD": global_rmsd(ref_chain, pred_chain)})
+
+    rmsd_long = pd.concat(all_rmsd, ignore_index=True)
+    plddt_long = pd.concat(all_plddt, ignore_index=True)
+
+    # Merge RMSD and pLDDT on predicted residue number + label
+    merged = rmsd_long.merge(plddt_long, on=["pred_resseq", "label"], how="inner")
+
+    # Save CSVs
+    (outdir / "per_residue_rmsd.csv").write_text(rmsd_long.to_csv(index=False))
+    (outdir / "per_residue_plddt.csv").write_text(plddt_long.to_csv(index=False))
+    (outdir / "rmsd_vs_plddt.csv").write_text(merged.to_csv(index=False))
+    pd.DataFrame(tm_rows).to_csv(outdir / "global_rmsd.csv", index=False)
+
+    # Plots
+    line_rmsd(rmsd_long, str(outdir / "rmsd_lineplot.png"))
+    scatter_rmsd_vs_plddt(merged, str(outdir / "rmsd_vs_plddt.png"))
+
+    typer.echo(f"Saved CSVs and plots in: {outdir}")
+
+
+# ---------- file: README.md ----------
+# pdbstats (object‑first)
+
+A tiny, minimal package to compute **per‑residue RMSD**, **per‑residue pLDDT**, a simple **global RMSD**, and produce 2 quick plots. The core API works directly with **Biopython objects** (e.g., `Chain`), and the CLI is a thin wrapper that only does file I/O.
+
+## Install (editable)
+```bash
+pip install -e .
+```
+
+## Usage (CLI)
+```bash
+pdbstats compare \
+  --ref native.pdb \
+  --pred pred_AF2.pdb --pred pred_RoseTTAFold.pdb \
+  --labels AF2 RoseTTA \
+  --chain-id A \
+  --outdir outputs
+```
+This writes:
+- `per_residue_rmsd.csv`, `per_residue_plddt.csv`, `rmsd_vs_plddt.csv`, `global_rmsd.csv`
+- `rmsd_lineplot.png`, `rmsd_vs_plddt.png`
+
+## Python API (object‑first)
+```python
+from Bio.PDB import PDBParser
+from pdbstats.io import parse_structure, select_chain
+from pdbstats.core import per_residue_rmsd, per_residue_plddt, global_rmsd
+
+ref_chain = select_chain(parse_structure("native.pdb"), chain_id="A")
+pred_chain = select_chain(parse_structure("pred_AF2.pdb"), chain_id="A")
+
+rmsd_df = per_residue_rmsd(ref_chain, pred_chain)
+plddt_df = per_residue_plddt(pred_chain)
+g_rmsd = global_rmsd(ref_chain, pred_chain)
+```
+
+## Design notes
+- **Object‑first**: core functions take `Chain` objects, not paths. The CLI simply loads them.
+- **Sequence alignment**: matching is done by a straightforward global alignment; change scoring easily in `core.py`.
+- **Superposition**: CA‑based superposition is applied to *all* atoms of the predicted chain before per‑residue RMSD. This modifies the chain in place; if you need to preserve original coordinates, clone the structure first.
+- **Robustness**: non‑standard residues map to reasonable 1‑letter codes, else `X`.
+- **Keep it tiny**: just Biopython, pandas, matplotlib, seaborn, Typer.
+
+## Caveats
+- pLDDT is read from CA **B‑factors** (AlphaFold convention). If your files differ, tweak `per_residue_plddt`.
+- Insertion codes are ignored in joins; we key merges on `pred_resseq`.
+- Global RMSD reported is for the matched CA atoms used in superposition.
