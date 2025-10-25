@@ -24,8 +24,11 @@ def per_residue_rmsd(ref_chain: Chain.Chain, pred_chain: Chain.Chain) -> pd.Data
     """
     core._superpose_on_ca(ref_chain, pred_chain)
 
-    ref_res = list(ref_chain.get_residues())
-    pred_res = list(pred_chain.get_residues())
+    #we cannot directly use the residues,
+    #as there might be other atoms (especially in the ground truth) as well,
+    #and we are only interested in positional differences (between the AAs)
+    ref_res = core._aa_residues(ref_chain)
+    pred_res = core._aa_residues(pred_chain)
     
     rows = []
     for pos in range(len(ref_res)):
@@ -38,7 +41,7 @@ def per_residue_rmsd(ref_chain: Chain.Chain, pred_chain: Chain.Chain) -> pd.Data
                 "RMSD": _rmsd_between_residues(r_ref, r_pred)
             }
         )
-    return pandas.DataFrame(rows)
+    return pd.DataFrame(rows)
 
 def global_rmsd(ref_chain: Chain.Chain, pred_chain: Chain.Chain) -> float:
     core._superpose_on_ca(ref_chain, pred_chain)

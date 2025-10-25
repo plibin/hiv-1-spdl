@@ -18,8 +18,10 @@ def main():
     refs = io.load_refs(base_path, args.protein)
     
     for algorithm in config.algorithms():
+        print("algo:" + algorithm)
         preds = io.load_preds(refs, base_path, args.protein, algorithm)
         for ref in refs.keys():
+            print("ref:" + ref)
             r = refs[ref]
             p = preds[ref]
             if args.stat == "rmsd":

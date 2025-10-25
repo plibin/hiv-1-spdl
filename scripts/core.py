@@ -18,13 +18,17 @@ def _res_name(r: Residue.Residue) -> str:
     return protein_letters_3to1.get(name)
 
 def _seq_from_chain(chain: Chain.Chain) -> str:
+    AAs = _aa_residues(chain)
+        
+    return "".join(_res_name(aa) for aa in AAs)
+
+def _aa_residues(chain: Chain.Chain) -> List[Residue.Residue]:
     AAs = []
     for r in chain.get_residues():
         if r.id[0] != " ":  # Not a standard amino acid
             continue
         AAs.append(r)
-        
-    return "".join(_res_name(aa) for aa in AAs)
+    return AAs
 
 #TODO: is this used?
 def _resid_tuple(r: Residue.Residue) -> Tuple[str, int, str]:
