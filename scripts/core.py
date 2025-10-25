@@ -14,9 +14,7 @@ AA_OVERRIDES = {
 
 def _res_name(r: Residue.Residue) -> str:
     name = r.get_resname().strip().upper()
-    print(name)
     name = AA_OVERRIDES.get(name, name).capitalize()
-    print(protein_letters_3to1.get(name))
     return protein_letters_3to1.get(name)
 
 def _seq_from_chain(chain: Chain.Chain) -> str:

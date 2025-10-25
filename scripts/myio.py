@@ -39,11 +39,9 @@ def load_preds(refs, base_path, protein, algorithm):
             if p.stem.lower().startswith(ref.lower()):
                 matches.append(p)
         if len(matches) == 0 :
-            #TODO: should be a msg to std.err (because otherwise it will crash for AlphaFold3)?
-            raise RuntimeError("No prediction found for ref " + ref + " for algorithm " + algorithm)
+            print("No prediction found for ref " + ref + " for algorithm " + algorithm, file=sys.stderr)
         elif len(matches) > 1 :
-            #TODO: should be a msg to std.err (because otherwise it will crash for AlphaFold3)?
-            raise RuntimeError("More then one prediction found for ref " + ref + " for algorithm " + algorithm)
+            print("More then one prediction found for ref " + ref + " for algorithm " + algorithm, file=sys.stderr)
         else :
             preds[ref] = parse_structure_pdb(p)
 
