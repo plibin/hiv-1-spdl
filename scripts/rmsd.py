@@ -17,12 +17,12 @@ def _rmsd_between_residues(r_ref, r_pred):
     squared_diffs = _squared_diffs_between_residues(r_ref, r_pred)
     return float(np.sqrt(np.mean(squared_diffs)))
 
-def per_residue_rmsd(ref_chain: Chain.Chain, pred_chain: Chain.Chain) -> pd.DataFrame:
+def per_residue_rmsd(start: int, end: int, ref_chain: Chain.Chain, pred_chain: Chain.Chain) -> pd.DataFrame:
     """Compute per-residue RMSD for *aligned* residue pairs between `ref_chain` and `pred_chain`.
 
     Returns a DataFrame with columns pos and RMSD.
     """
-    core._superpose_on_ca(ref_chain, pred_chain)
+    core._superpose_on_ca(start, end, ref_chain, pred_chain)
 
     #we cannot directly use the residues,
     #as there might be other atoms (especially in the ground truth) as well,
@@ -31,7 +31,7 @@ def per_residue_rmsd(ref_chain: Chain.Chain, pred_chain: Chain.Chain) -> pd.Data
     pred_res = core._aa_residues(pred_chain)
     
     rows = []
-    for pos in range(len(ref_res)):
+    for pos in range(start, end):
         r_ref = ref_res[pos]
         r_pred = pred_res[pos]
 
@@ -43,14 +43,14 @@ def per_residue_rmsd(ref_chain: Chain.Chain, pred_chain: Chain.Chain) -> pd.Data
         )
     return pd.DataFrame(rows)
 
-def global_rmsd(ref_chain: Chain.Chain, pred_chain: Chain.Chain) -> float:
-    core._superpose_on_ca(ref_chain, pred_chain)
+def global_rmsd(start: int, end: int, ref_chain: Chain.Chain, pred_chain: Chain.Chain) -> float:
+    core._superpose_on_ca(start, end, ref_chain, pred_chain)
 
     ref_res = list(ref_chain.get_residues())
     pred_res = list(pred_chain.get_residues())
 
     squared_diffs = []
-    for pos in range(1, len(ref_res) + 1):
+    for pos in range(start, end):
         r_ref = ref_res[pos]
         r_pred = pred_res[pos]
         squared_diffs.append(_squared_diffs_between_residues(r_ref, r_pred))

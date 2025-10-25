@@ -39,16 +39,16 @@ def _ca_atoms(residues: Sequence[Residue.Residue]) -> List[Atom.Atom]:
     #r["CA"]: Retrieve the CA atom from residue r
     return [r["CA"] for r in residues if "CA" in r]
 
-def _superpose_on_ca(ref_chain: Chain.Chain, pred_chain: Chain.Chain):
+def _superpose_on_ca(start: int, end: int, ref_chain: Chain.Chain, pred_chain: Chain.Chain):
     """Compute superposition on matched CA atoms and apply to all atoms in pred chain.
        Changes the coordinates of pred_chain in place.
     """
-    ref_seq = _seq_from_chain(ref_chain)
-    pred_seq = _seq_from_chain(pred_chain)
+    ref_seq = _seq_from_chain(ref_chain)[start:end]
+    pred_seq = _seq_from_chain(pred_chain)[start:end]
     print(ref_seq)
     print(pred_seq)
     if ref_seq == pred_seq:
-        pairs = [(i, i) for i in range(len(ref_seq))]
+        pairs = [(i, i) for i in range(start, end)]
     else:
         raise RuntimeError("Ref and pred seq are different!")
 
@@ -70,4 +70,5 @@ def _superpose_on_ca(ref_chain: Chain.Chain, pred_chain: Chain.Chain):
     sup.set_atoms(ref_cas, pred_cas)
     # apply transform to every atom in pred residues
     all_pred_atoms = [a for r in pred_res for a in r.get_atoms()]
+    #TODO: not sure if this is necessary, or even allowed?
     sup.apply(all_pred_atoms)
