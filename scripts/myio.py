@@ -2,6 +2,7 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Optional, Union
 from Bio.PDB import PDBParser, MMCIFParser, Structure, Model, Chain
+import sys
 
 def parse_structure_pdb(path: Path) -> Structure.Structure:
     #TODO: check the extension
@@ -36,42 +37,13 @@ def load_preds(refs, base_path, protein, algorithm):
         algo_path = base_path / protein / algorithm 
         matches = []
         for p in algo_path.iterdir():
-            if p.stem.lower().startswith(ref.lower()):
+            if p.stem.lower().startswith(ref.lower()) and p.suffix.lower() == ".pdb":
                 matches.append(p)
         if len(matches) == 0 :
             print("No prediction found for ref " + ref + " for algorithm " + algorithm, file=sys.stderr)
         elif len(matches) > 1 :
-            print("More then one prediction found for ref " + ref + " for algorithm " + algorithm, file=sys.stderr)
+            raise RuntimeError("More than one prediction found for ref " + ref + " for algorithm " + algorithm)
         else :
-            preds[ref] = parse_structure_pdb(p)
+            preds[ref] = parse_structure_pdb(matches[0])
 
     return preds
-    
-
-#TODO: do we need this? remove?
-def select_chain(
-    obj: Union[Structure.Structure, Model.Model, Chain.Chain],
-    chain_id: Optional[str] = None,
-) -> Chain.Chain:
-    """Return a Chain from Structure/Model/Chain.
-
-    - If `obj` is a Structure: take first model, then matching chain_id or first chain.
-    - If `obj` is a Model: take matching chain_id or first chain.
-    - If `obj` is a Chain: return it (ignoring chain_id).
-    """
-    if isinstance(obj, Chain.Chain):
-        return obj
-    if isinstance(obj, Structure.Structure):
-        model = _first_model(obj)
-    elif isinstance(obj, Model.Model):
-        model = obj
-    else:
-        raise TypeError(f"Unsupported object type: {type(obj)}")
-
-    if chain_id is None:
-        return _first_chain(model)
-
-    for ch in model.get_chains():
-        if ch.id == chain_id:
-            return ch
-    raise ValueError(f"Chain '{chain_id}' not found; available: {[c.id for c in model.get_chains()]}.")
