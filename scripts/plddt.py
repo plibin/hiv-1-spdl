@@ -1,14 +1,11 @@
-def per_residue_plddt(pred_chain: Chain.Chain) -> pd.DataFrame:
-    """Extract per-residue pLDDT from CA B-factors of a *predicted* chain.
+from Bio.PDB import Chain, Residue, Atom, Superimposer
+import core
 
-    Returns DataFrame with columns:
-    - pred_resseq: residue number from the chain
-    - pLDDT: float (taken from CA B-factor)
-    """
-    rows = []
-    for r in pred_chain.get_residues():
-        if "CA" not in r:
-            continue
-        _, resseq, _ = _resid_tuple(r)
-        rows.append({"pred_resseq": resseq, "pLDDT": float(r["CA"].get_bfactor())})
-    return pd.DataFrame(rows)
+def _plldt(ref_r: Residue.Residue, pred_r: Residue.Residue) -> float:
+    #TODO: why the CA atom?
+    return float(pred_r["CA"].get_bfactor())
+
+def per_residue_plddt(start: int, end: int,
+                      ref_chain: Chain.Chain,
+                      pred_chain: Chain.Chain) -> dict[int, float]:
+    return core.stat_per_residue(start, end, ref_chain, pred_chain, _plldt)

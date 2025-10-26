@@ -13,46 +13,15 @@ def _squared_diffs_between_residues(ref_r: Residue.Residue, pred_r: Residue.Resi
         squared_diffs.append(np.dot(v, v))
     return squared_diffs
 
-def _rmsd_between_residues(r_ref, r_pred):
+def _rmsd_between_residues(r_ref: Residue.Residue, r_pred: Residue.Residue):
     squared_diffs = _squared_diffs_between_residues(r_ref, r_pred)
     return float(np.sqrt(np.mean(squared_diffs)))
 
-def per_residue_rmsd(start: int, end: int, ref_chain: Chain.Chain, pred_chain: Chain.Chain) -> pd.DataFrame:
-    """Compute per-residue RMSD for *aligned* residue pairs between `ref_chain` and `pred_chain`.
-
-    Returns a DataFrame with columns pos and RMSD.
-    """
-    core._superpose_on_ca(start, end, ref_chain, pred_chain)
-
-    #we cannot directly use the residues,
-    #as there might be other atoms (especially in the ground truth) as well,
-    #and we are only interested in positional differences (between the AAs)
-    ref_res = core._aa_residues(ref_chain)
-    pred_res = core._aa_residues(pred_chain)
-    
-    rows = []
-    for pos in range(start, end):
-        r_ref = ref_res[pos]
-        r_pred = pred_res[pos]
-
-        rows.append(
-            {
-                "pos": pos + 1,
-                "RMSD": _rmsd_between_residues(r_ref, r_pred)
-            }
-        )
-    return pd.DataFrame(rows)
+#Return a dict with the positions and corresponding RMSDs
+def per_residue_rmsd(start: int, end: int, ref_chain: Chain.Chain, pred_chain: Chain.Chain) -> dict[int, float]:
+    return core.stat_per_residue(start, end, ref_chain, pred_chain, _rmsd_between_residues)
 
 def global_rmsd(start: int, end: int, ref_chain: Chain.Chain, pred_chain: Chain.Chain) -> float:
-    core._superpose_on_ca(start, end, ref_chain, pred_chain)
+    squared_diffs = core.stat_per_residue(start, end, ref_chain, pred_chain, _squared_diffs_between_residues)
 
-    ref_res = list(ref_chain.get_residues())
-    pred_res = list(pred_chain.get_residues())
-
-    squared_diffs = []
-    for pos in range(start, end):
-        r_ref = ref_res[pos]
-        r_pred = pred_res[pos]
-        squared_diffs.append(_squared_diffs_between_residues(r_ref, r_pred))
-        
     return float(np.sqrt(np.mean(squared_diffs)))
