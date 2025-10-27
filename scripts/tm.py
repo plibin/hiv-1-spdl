@@ -13,7 +13,7 @@ def global_tm(start: int, end: int,
               ref_chain: Chain.Chain,
               pred_chain: Chain.Chain,
               L_N: int) -> float:
-    d_i_list = core.stat_per_residue(start, end, ref_chain, pred_chain, _dist)
+    pos_to_d_i = core.stat_per_residue(start, end, ref_chain, pred_chain, _dist)
 
     # As specified in the original TM-score paper: 10.1002/prot.20264,
     # d_i  is the distance between the i-th pair of aligned residues,
@@ -29,6 +29,6 @@ def global_tm(start: int, end: int,
     #TODO: GPT said: If L_N is small (<15), (L_N - 15)**(1.0/3.0) becomes a fractional power of a negative number, which Python treats as complex. That will break later math, but not in a super obvious way until runtime. I would propose to raise if this is the case (this should never happen...)
     #TODO: and some more: If you ask for --stat tm on a short segment (like 10 residues), you’ll hit the complex-number issue in the d_0 calculation before your own if d_0 < 0.5 clamp can “rescue” it. That’s an actual runtime failure.
 
-    terms = [1.0 / (1.0 + (d_i / d_0)**2) for d_i in d_i_list]
+    terms = [1.0 / (1.0 + (d_i / d_0)**2) for d_i in pos_to_d_i.values()]
     
     return sum(terms)/float(L_N)
