@@ -38,7 +38,9 @@ def main():
                 g_rmsd = rmsd.global_rmsd(start, end, r_chain, p_chain)
                 row["RMSD"] = g_rmsd
             elif args.stat == "tm":
-                g_tm = tm.global_tm(start, end, r_chain, p_chain)
+                #TODO: given our problem set this choice for L_N seems to make sense?
+                L_N = end - start
+                g_tm = tm.global_tm(start, end, r_chain, p_chain, L_N)
                 row["TM"] = g_tm
 
             row["Algorithm"] = algorithm
@@ -46,7 +48,7 @@ def main():
             
             rows.append(row)
                 
-    df = pd.DataFrame(row)
+    df = pd.DataFrame(rows)
     df.to_csv(sys.stdout, index=False)
 
 if __name__ == "__main__":

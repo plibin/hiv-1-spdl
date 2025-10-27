@@ -1,9 +1,7 @@
 from __future__ import annotations
-from typing import Iterable, List, Sequence, Tuple
 import numpy as np
 import pandas as pd
 from Bio.PDB import Chain, Residue, Atom, Superimposer
-from Bio import pairwise2
 from Bio.Data.IUPACData import protein_letters_3to1
 
 AA_OVERRIDES = {
@@ -11,6 +9,21 @@ AA_OVERRIDES = {
     "SEC": "CYS",  # Selenocysteine → CYS (approximate)
     "PYL": "LYS",  # Pyrrolysine → LYS (approximate)
 }
+
+def squared_diffs_between_residues(ref_r: Residue.Residue, pred_r: Residue.Residue) -> list[float]:
+    #Since we assume alignment, the overlap should be perfect,
+    #but to be robust for missing artefacts in the ground truth PDB,
+    #we follow this approach.
+    names = set(a.get_name() for a in ref_r) & set(a.get_name() for a in pred_r)
+    if not names:
+        #TODO: we should raise here...
+        return []
+    
+    squared_diffs = []
+    for n in names:
+        v = ref_r[n].get_coord() - pred_r[n].get_coord()
+        squared_diffs.append(np.dot(v, v))
+    return squared_diffs
 
 def _res_aa_letter(r: Residue.Residue) -> str:
     name = r.get_resname().strip().upper()
@@ -33,18 +46,17 @@ def _ca_atoms(residues: Sequence[Residue.Residue]) -> List[Atom.Atom]:
     #r["CA"]: Retrieve the CA atom from residue r
     return [r["CA"] for r in residues if "CA" in r]
 
-#TODO: specify signature of state
 def stat_per_residue(start: int, end: int,
                      ref_chain: Chain.Chain, pred_chain: Chain.Chain,
                      stat: Callable[Residue.Residue, Residue.Residue, float]) -> dict[int, float]:
     #Steps:
     #1. Filter to amino-acid residues only (skip waters/ligands/etc.).
     #2. We assume the amino acid sequences are aligned in the considered range (start-end),
-    #     and check this (error is raised if this is not met)
-    #     (we try to predict structures to compare them with their ground truth)
+    #     (we try to predict structures to compare them with their ground truth),
+    #     and check this (error is raised if this is not met).
     #3. Superpose pred onto ref using CA pairs (in-place), *only* between start-end.
     #     TODO: is this correct? (that means, outside the considered range, the atoms are not aligned!)
-    #4. Apply a function stat to each pair of residues of chain ref and pred, between start-end.
+    #4. Apply a function stat() to each pair of residues of chain ref and pred, between start-end.
     #5. Return a dict of position with their corresponding score as computed by stat().
     # Since it is possible that some atoms are not aligned,
     # it is important to keep this workflow together to ensure consistency!

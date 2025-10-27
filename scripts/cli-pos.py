@@ -25,7 +25,6 @@ def main():
 
     dfs = []
     for algorithm in config.algorithms():
-        print("algo:" + algorithm)
         preds = io.load_preds(refs, base_path, args.protein, algorithm)
         for ref in refs.keys():
             r = refs[ref]
@@ -35,17 +34,15 @@ def main():
             p_chain = io._first_chain(io._first_model(p))
 
             df = None
+            rows = None
             if args.stat == "rmsd":
                 pos_to_rmsd = rmsd.per_residue_rmsd(start, end, r_chain, p_chain)
-
                 rows = [{"pos": pos + 1, "RMSD": rmsd} for pos, rmsd in pos_to_rmsd.items()]
-                df = pd.DataFrame(rows)
             elif args.stat == "plddt":
                 pos_to_plddt = plddt.per_residue_plddt(start, end, r_chain, p_chain)
-
                 rows = [{"pos": pos + 1, "pLDDT": plddt} for pos, plddt in pos_to_plddt.items()]
-                df = pd.DataFrame(rows)
 
+            df = pd.DataFrame(rows)
             df["Algorithm"] = algorithm
             df["ref"] = ref
             dfs.append(df)

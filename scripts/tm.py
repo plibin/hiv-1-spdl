@@ -1,10 +1,12 @@
 import numpy as np
 from math import sqrt
+from Bio.PDB import Residue, Chain
+import core
 
 def _dist(r_ref: Residue.Residue, r_pred: Residue.Residue) -> float:
-    diff = r_ref.get_coord() - r_pred.get_coord()
+    sq_diff = core.squared_diffs_between_residues(r_ref, r_pred)
     #Euclidean norm
-    return float(np.sqrt(np.dot(diff, diff)))
+    return float(np.sqrt(np.mean(sq_diff)))
 
 def global_tm(start: int, end: int,
               ref_chain: Chain.Chain,
