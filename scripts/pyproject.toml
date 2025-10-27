@@ -16,6 +16,3 @@ dependencies = [
   "seaborn>=0.12",
   "typer>=0.9"
 ]
-
-[project.scripts]
-pdbstats = "pdbstats.cli:app"

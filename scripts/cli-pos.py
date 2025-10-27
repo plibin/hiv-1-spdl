@@ -21,6 +21,7 @@ def main():
     
     refs = io.load_refs(base_path, args.protein)
 
+    #TODO: GPT thought the indexing was confusing (I tend to agree), here we assume a 0-based index, which is then implicitely converted to a one-based index, perhaps using a one-based index in the interface would make more sense?
     start, end = args.range
 
     dfs = []

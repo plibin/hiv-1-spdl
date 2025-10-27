@@ -4,6 +4,8 @@ import pandas as pd
 from Bio.PDB import Chain, Residue, Atom, Superimposer
 from Bio.Data.IUPACData import protein_letters_3to1
 
+#TODO: this is inconsistent (this mapping), with the definition of is_aa(),
+#but do we ever encouter it? if not, we can ignore this for now?
 AA_OVERRIDES = {
     "MSE": "MET",  # Selenomethionine → MET
     "SEC": "CYS",  # Selenocysteine → CYS (approximate)
@@ -46,6 +48,8 @@ def _ca_atoms(residues: Sequence[Residue.Residue]) -> List[Atom.Atom]:
     #r["CA"]: Retrieve the CA atom from residue r
     return [r["CA"] for r in residues if "CA" in r]
 
+#TODO: now this mutations the chain in place,
+#which could lead to confusion later on -> no reason not to copy the chain before proceeding?
 def stat_per_residue(start: int, end: int,
                      ref_chain: Chain.Chain, pred_chain: Chain.Chain,
                      stat: Callable[Residue.Residue, Residue.Residue, float]) -> dict[int, float]:
@@ -75,7 +79,9 @@ def stat_per_residue(start: int, end: int,
         pairs = [(i, i) for i in range(start, end)]
     else:
         raise RuntimeError("Ref and pred seq are different between start-end!")
+    #TODO: GPT said: But there’s a corner case: if you ask for a range that extends past the end of one chain, Python slicing on the shorter sequence just gives you a truncated string instead of raising. Those truncated substrings can still be “equal,” so you pass the equality check… and then later you actually index the residues by ref_res[ri] / pred_res[pj] for all ri in range(start,end), which will raise IndexError when you walk off the end. -> I guess we can add a line to test for this...
 
+    
     #3. Superpose pred onto ref using CA pairs (in-place), *only* between start-end.
     ref_cas = []
     pred_cas = []

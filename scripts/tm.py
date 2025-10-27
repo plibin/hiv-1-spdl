@@ -3,6 +3,7 @@ from math import sqrt
 from Bio.PDB import Residue, Chain
 import core
 
+#TODO: GPT told me TM should be computed on CA distances, can we verify this?
 def _dist(r_ref: Residue.Residue, r_pred: Residue.Residue) -> float:
     sq_diff = core.squared_diffs_between_residues(r_ref, r_pred)
     #Euclidean norm
@@ -24,6 +25,9 @@ def global_tm(start: int, end: int,
     d_0 = 1.24 * (L_N - 15)**(1.0/3.0) - 1.8
     if d_0 < 0.5:
         d_0 = 0.5
+
+    #TODO: GPT said: If L_N is small (<15), (L_N - 15)**(1.0/3.0) becomes a fractional power of a negative number, which Python treats as complex. That will break later math, but not in a super obvious way until runtime. I would propose to raise if this is the case (this should never happen...)
+    #TODO: and some more: If you ask for --stat tm on a short segment (like 10 residues), you’ll hit the complex-number issue in the d_0 calculation before your own if d_0 < 0.5 clamp can “rescue” it. That’s an actual runtime failure.
 
     terms = [1.0 / (1.0 + (d_i / d_0)**2) for d_i in d_i_list]
     
