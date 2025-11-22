@@ -1,8 +1,9 @@
 from Bio.PDB import Chain, Residue, Atom, Superimposer
-import core
+from . import core
 
 def _plldt(ref_r: Residue.Residue, pred_r: Residue.Residue) -> float:
-    #TODO: why the CA atom?
+    # pLDDT is typically stored in the B-factor field. 
+    # AlphaFold stores the same value for all atoms in a residue, so checking CA is sufficient.
     return float(pred_r["CA"].get_bfactor())
 
 def per_residue_plddt(start: int, end: int,
