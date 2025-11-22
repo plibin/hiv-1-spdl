@@ -5,12 +5,14 @@ from Bio.PDB import PDBParser, MMCIFParser, Structure, Model, Chain
 import sys
 
 def parse_structure_pdb(path: Path) -> Structure.Structure:
-    #TODO: check the extension
+    if path.suffix.lower() != ".pdb":
+        raise ValueError(f"Expected .pdb file, got {path}")
     parser = PDBParser(QUIET=True)
     return parser.get_structure(path.stem, str(path))
 
 def parse_structure_mmcif(path: Path) -> Structure.Structure:
-    #TODO: check the extension
+    if path.suffix.lower() not in [".cif", ".mmcif"]:
+        raise ValueError(f"Expected .cif or .mmcif file, got {path}")
     parser = MMCIFParser(QUIET=True)
     return parser.get_structure(path.stem, str(path))
 
