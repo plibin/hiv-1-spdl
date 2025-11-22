@@ -14,5 +14,6 @@ dependencies = [
   "numpy>=1.23",
   "matplotlib>=3.7",
   "seaborn>=0.12",
-  "typer>=0.9"
+  "typer>=0.9",
+  "pytest>=7.0"
 ]
