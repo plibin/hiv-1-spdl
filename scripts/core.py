@@ -4,12 +4,11 @@ import pandas as pd
 from Bio.PDB import Chain, Residue, Atom, Superimposer
 from Bio.Data.IUPACData import protein_letters_3to1
 
-#TODO: this is inconsistent (this mapping), with the definition of is_aa(),
-#but do we ever encouter it? if not, we can ignore this for now?
+# Mapping for non-standard amino acids
 AA_OVERRIDES = {
-    "MSE": "MET",  # Selenomethionine → MET
-    "SEC": "CYS",  # Selenocysteine → CYS (approximate)
-    "PYL": "LYS",  # Pyrrolysine → LYS (approximate)
+    "MSE": "MET",  # Selenomethionine -> MET
+    "SEC": "CYS",  # Selenocysteine -> CYS (approximate)
+    "PYL": "LYS",  # Pyrrolysine -> LYS (approximate)
 }
 
 def squared_diffs_between_residues(ref_r: Residue.Residue, pred_r: Residue.Residue) -> list[float]:
@@ -18,8 +17,7 @@ def squared_diffs_between_residues(ref_r: Residue.Residue, pred_r: Residue.Resid
     #we follow this approach.
     names = set(a.get_name() for a in ref_r) & set(a.get_name() for a in pred_r)
     if not names:
-        #TODO: we should raise here...
-        return []
+        raise ValueError(f"No common atoms found between residues {ref_r} and {pred_r}")
     
     squared_diffs = []
     for n in names:
@@ -33,7 +31,7 @@ def _res_aa_letter(r: Residue.Residue) -> str:
     return protein_letters_3to1.get(name)
 
 def is_aa(r: Residue.Residue) -> bool:
-    return r.id[0] == " "
+    return r.id[0] == " " or r.get_resname().strip().upper() in AA_OVERRIDES
 
 def aa_seq(residues: List[Residue.Residue]) -> str:
     for r in residues:
@@ -48,18 +46,20 @@ def _ca_atoms(residues: Sequence[Residue.Residue]) -> List[Atom.Atom]:
     #r["CA"]: Retrieve the CA atom from residue r
     return [r["CA"] for r in residues if "CA" in r]
 
-#TODO: now this mutations the chain in place,
-#which could lead to confusion later on -> no reason not to copy the chain before proceeding?
+import copy
+
 def stat_per_residue(start: int, end: int,
                      ref_chain: Chain.Chain, pred_chain: Chain.Chain,
                      stat: Callable[Residue.Residue, Residue.Residue, float]) -> dict[int, float]:
+    # Deep copy the predicted chain to avoid in-place mutation side effects
+    pred_chain = copy.deepcopy(pred_chain)
     #Steps:
     #1. Filter to amino-acid residues only (skip waters/ligands/etc.).
     #2. We assume the amino acid sequences are aligned in the considered range (start-end),
     #     (we try to predict structures to compare them with their ground truth),
     #     and check this (error is raised if this is not met).
     #3. Superpose pred onto ref using CA pairs (in-place), *only* between start-end.
-    #     TODO: is this correct? (that means, outside the considered range, the atoms are not aligned!)
+    #   Note: This means atoms outside the range are not necessarily aligned, which is intended for local analysis.
     #4. Apply a function stat() to each pair of residues of chain ref and pred, between start-end.
     #5. Return a dict of position with their corresponding score as computed by stat().
     # Since it is possible that some atoms are not aligned,
@@ -79,7 +79,9 @@ def stat_per_residue(start: int, end: int,
         pairs = [(i, i) for i in range(start, end)]
     else:
         raise RuntimeError("Ref and pred seq are different between start-end!")
-    #TODO: GPT said: But there’s a corner case: if you ask for a range that extends past the end of one chain, Python slicing on the shorter sequence just gives you a truncated string instead of raising. Those truncated substrings can still be “equal,” so you pass the equality check… and then later you actually index the residues by ref_res[ri] / pred_res[pj] for all ri in range(start,end), which will raise IndexError when you walk off the end. -> I guess we can add a line to test for this...
+    # Check for out of bounds to avoid silent truncation
+    if end > len(ref_res) or end > len(pred_res):
+        raise IndexError(f"Range [{start}:{end}] extends past the end of chains (lengths: ref={len(ref_res)}, pred={len(pred_res)})")
 
     
     #3. Superpose pred onto ref using CA pairs (in-place), *only* between start-end.
@@ -94,9 +96,8 @@ def stat_per_residue(start: int, end: int,
 
     sup = Superimposer()
     sup.set_atoms(ref_cas, pred_cas)
-    # TODO?: apply transform to every atom in pred residues
+    # Apply transform to every atom in pred residues to ensure the whole chain moves
     all_pred_atoms = [a for r in pred_res for a in r.get_atoms()]
-    #TODO: not sure if this is necessary, or even allowed?
     sup.apply(all_pred_atoms)
 
     #4. Apply a function stat to each pair of residues of chain ref and pred, between start-end.
