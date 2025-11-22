@@ -21,13 +21,19 @@ def main():
     
     refs = io.load_refs(base_path, args.protein)
 
-    #TODO: GPT thought the indexing was confusing (I tend to agree), here we assume a 0-based index, which is then implicitely converted to a one-based index, perhaps using a one-based index in the interface would make more sense?
+    # Convert 1-based inclusive (PDB convention) to 0-based exclusive (Python convention)
     start, end = args.range
+    start -= 1
+    # end remains the same because 1-based inclusive end matches 0-based exclusive end
+    # e.g. 1-10 (10 residues) -> 0-10 (10 residues: 0..9)
 
     dfs = []
     for algorithm in config.algorithms():
         preds = io.load_preds(refs, base_path, args.protein, algorithm)
         for ref in refs.keys():
+            if ref not in preds:
+                print(f"Warning: No prediction for ref {ref} with algorithm {algorithm}, skipping.", file=sys.stderr)
+                continue
             r = refs[ref]
             p = preds[ref]
 
