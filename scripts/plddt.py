@@ -1,10 +1,15 @@
-from Bio.PDB import Chain, Residue, Atom, Superimposer
+from Bio.PDB import Chain, Residue
+
 from . import core
 
+
 def _plldt(ref_r: Residue.Residue, pred_r: Residue.Residue) -> float:
-    # pLDDT is typically stored in the B-factor field. 
+    # pDDT is typically stored in the B-factor field.
     # AlphaFold stores the same value for all atoms in a residue, so checking CA is sufficient.
+    # Code also should work for ESMFold predictions, only there the pLDDT values might be in eather [0,100] or [0,1] range.
+    # (https://biomodel.uah.es/Jmol/fold_AI/index.html, https://310.ai/docs/folding/esmfold)
     return float(pred_r["CA"].get_bfactor())
+
 
 def per_residue_plddt(start: int, end: int,
                       ref_chain: Chain.Chain,
