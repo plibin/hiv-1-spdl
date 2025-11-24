@@ -1,8 +1,10 @@
 from __future__ import annotations
+
 import numpy as np
-import pandas as pd
-from Bio.PDB import Chain, Residue, Atom, Superimposer
+import copy
+from typing import List, Sequence, Callable
 from Bio.Data.IUPACData import protein_letters_3to1
+from Bio.PDB import Chain, Residue, Atom, Superimposer
 
 # Mapping for non-standard amino acids
 AA_OVERRIDES = {
@@ -11,27 +13,31 @@ AA_OVERRIDES = {
     "PYL": "LYS",  # Pyrrolysine -> LYS (approximate)
 }
 
+
 def squared_diffs_between_residues(ref_r: Residue.Residue, pred_r: Residue.Residue) -> list[float]:
-    #Since we assume alignment, the overlap should be perfect,
-    #but to be robust for missing artefacts in the ground truth PDB,
-    #we follow this approach.
+    # Since we assume alignment, the overlap should be perfect,
+    # but to be robust for missing artefacts in the ground truth PDB,
+    # we follow this approach.
     names = set(a.get_name() for a in ref_r) & set(a.get_name() for a in pred_r)
     if not names:
         raise ValueError(f"No common atoms found between residues {ref_r} and {pred_r}")
-    
+
     squared_diffs = []
     for n in names:
         v = ref_r[n].get_coord() - pred_r[n].get_coord()
         squared_diffs.append(np.dot(v, v))
     return squared_diffs
 
+
 def _res_aa_letter(r: Residue.Residue) -> str:
     name = r.get_resname().strip().upper()
     name = AA_OVERRIDES.get(name, name).capitalize()
     return protein_letters_3to1.get(name)
 
+
 def is_aa(r: Residue.Residue) -> bool:
     return r.id[0] == " " or r.get_resname().strip().upper() in AA_OVERRIDES
+
 
 def aa_seq(residues: List[Residue.Residue]) -> str:
     for r in residues:
@@ -39,18 +45,19 @@ def aa_seq(residues: List[Residue.Residue]) -> str:
             raise RuntimeError("Not a amino acide residue!")
     return "".join(_res_aa_letter(aa) for aa in residues)
 
+
 def aa_residues(chain: Chain.Chain) -> List[Residue.Residue]:
     return [r for r in chain.get_residues() if is_aa(r)]
 
+
 def _ca_atoms(residues: Sequence[Residue.Residue]) -> List[Atom.Atom]:
-    #r["CA"]: Retrieve the CA atom from residue r
+    # r["CA"]: Retrieve the CA atom from residue r
     return [r["CA"] for r in residues if "CA" in r]
 
-import copy
 
 def stat_per_residue(start: int, end: int,
                      ref_chain: Chain.Chain, pred_chain: Chain.Chain,
-                     stat: Callable[Residue.Residue, Residue.Residue, float]) -> dict[int, float]:
+                     stat: Callable[[Residue.Residue, Residue.Residue], float]) -> dict[int, float]:
     # Deep copy the predicted chain to avoid in-place mutation side effects
     pred_chain = copy.deepcopy(pred_chain)
     #Steps:
@@ -64,7 +71,7 @@ def stat_per_residue(start: int, end: int,
     #5. Return a dict of position with their corresponding score as computed by stat().
     # Since it is possible that some atoms are not aligned,
     # it is important to keep this workflow together to ensure consistency!
-    
+
     #1. Filter to amino-acid residues only.
     ref_res = aa_residues(ref_chain)
     pred_res = aa_residues(pred_chain)
@@ -81,17 +88,17 @@ def stat_per_residue(start: int, end: int,
         raise RuntimeError("Ref and pred seq are different between start-end!")
     # Check for out of bounds to avoid silent truncation
     if end > len(ref_res) or end > len(pred_res):
-        raise IndexError(f"Range [{start}:{end}] extends past the end of chains (lengths: ref={len(ref_res)}, pred={len(pred_res)})")
+        raise IndexError(
+            f"Range [{start}:{end}] extends past the end of chains (lengths: ref={len(ref_res)}, pred={len(pred_res)})")
 
-    
     #3. Superpose pred onto ref using CA pairs (in-place), *only* between start-end.
     ref_cas = []
     pred_cas = []
     for ri, pj in pairs:
-        if "CA" in ref_res[ri] and "CA" in pred_res[pj] :
-            ref_cas.append(ref_res[ri]["CA"]) 
+        if "CA" in ref_res[ri] and "CA" in pred_res[pj]:
+            ref_cas.append(ref_res[ri]["CA"])
             pred_cas.append(pred_res[pj]["CA"])
-        else :
+        else:
             raise RuntimeError("No CA atom in amino acid at pair (" + str(ri) + "," + str(pj) + ")")
 
     sup = Superimposer()
