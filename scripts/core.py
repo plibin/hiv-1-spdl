@@ -96,6 +96,7 @@ def stat_per_residue(start: int, end: int,
 
     #3. Superpose pred onto ref using CA pairs (in-place), *only* between start-end.
     #  Note: This means atoms outside the range are not necessarily aligned, which is intended for local analysis.
+    #  Note: Other methods might exist that use all backbone heavy atoms.
     # https://blog.matteoferla.com/2021/07/per-residue-rmsd.html?m=0 --> local superpositioning and calculation based on CA
     # https://cgmartini.nl/docs/tutorials/Martini3/ProteinsI/Tut2.html ; https://pmc.ncbi.nlm.nih.gov/articles/PMC4321859/ --> calculating based on CA
     ref_cas = []
