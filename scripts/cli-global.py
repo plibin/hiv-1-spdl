@@ -9,7 +9,7 @@ import cli
 from pathlib import Path
 
 def main():
-    parser = argparse.ArgumentParser(description="CLI for positional statistics.")
+    parser = argparse.ArgumentParser(description="CLI for global statistics.")
     parser.add_argument("--base-path", "-b", required=True)
     parser.add_argument("--protein", "-p",  required=True)
     parser.add_argument("--stat", "-s", choices=["rmsd","tm"], required=True)
@@ -29,10 +29,10 @@ def main():
     for algorithm in config.algorithms():
         preds = io.load_preds(refs, base_path, args.protein, algorithm)
         for ref in refs.keys():
-            r = refs[ref]
             if ref not in preds:
                 print(f"Warning: No prediction for ref {ref} with algorithm {algorithm}, skipping.", file=sys.stderr)
                 continue
+            r = refs[ref]
             p = preds[ref]
 
             r_chain = io._first_chain(io._first_model(r))
