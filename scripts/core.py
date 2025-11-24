@@ -58,8 +58,10 @@ def _ca_atoms(residues: Sequence[Residue.Residue]) -> List[Atom.Atom]:
 def stat_per_residue(start: int, end: int,
                      ref_chain: Chain.Chain, pred_chain: Chain.Chain,
                      stat: Callable[[Residue.Residue, Residue.Residue], float]) -> dict[int, float]:
+
     # Deep copy the predicted chain to avoid in-place mutation side effects
     pred_chain = copy.deepcopy(pred_chain)
+
     #Steps:
     #1. Filter to amino-acid residues only (skip waters/ligands/etc.).
     #2. We assume the amino acid sequences are aligned in the considered range (start-end),
@@ -80,6 +82,8 @@ def stat_per_residue(start: int, end: int,
     ref_seq = aa_seq(ref_res)[start:end]
     pred_seq = aa_seq(pred_res)[start:end]
     pairs = None
+
+    # Assuming aligned sequences, we can just pair by index. Apparently not trivial.
     if ref_seq == pred_seq:
         if len(ref_res) == 0:
             raise RuntimeError("Empty residue lists!")
@@ -88,10 +92,12 @@ def stat_per_residue(start: int, end: int,
         raise RuntimeError("Ref and pred seq are different between start-end!")
     # Check for out of bounds to avoid silent truncation
     if end > len(ref_res) or end > len(pred_res):
-        raise IndexError(
-            f"Range [{start}:{end}] extends past the end of chains (lengths: ref={len(ref_res)}, pred={len(pred_res)})")
+        raise IndexError(f"Range [{start}:{end}] extends past the end of chains (lengths: ref={len(ref_res)}, pred={len(pred_res)})")
 
     #3. Superpose pred onto ref using CA pairs (in-place), *only* between start-end.
+    #  Note: This means atoms outside the range are not necessarily aligned, which is intended for local analysis.
+    # https://blog.matteoferla.com/2021/07/per-residue-rmsd.html?m=0 --> local superpositioning and calculation based on CA
+    # https://cgmartini.nl/docs/tutorials/Martini3/ProteinsI/Tut2.html ; https://pmc.ncbi.nlm.nih.gov/articles/PMC4321859/ --> calculating based on CA
     ref_cas = []
     pred_cas = []
     for ri, pj in pairs:

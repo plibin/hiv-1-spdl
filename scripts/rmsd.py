@@ -17,7 +17,8 @@ def per_residue_rmsd(start: int, end: int, ref_chain: Chain.Chain, pred_chain: C
 # This metric evaluates how well the side-chains align given the backbone alignment.
 # The global RMSD computed here is the root-mean-square of the per-residue mean squared deviations,
 # which weights each residue equally (regardless of atom count). When using all atoms, residues with
-# more atoms contribute more to the total RMSD, which can bias results!! (http://pongor.itk.ppke.hu/library/Group-Publications/papers/142.pdf)
+# more atoms contribute more to the total RMSD, which can bias results!!
+# (http://pongor.itk.ppke.hu/library/Group-Publications/papers/142.pdf ; https://pmc.ncbi.nlm.nih.gov/articles/PMC4321859/ )
 def global_rmsd(start: int, end: int, ref_chain: Chain.Chain, pred_chain: Chain.Chain) -> float:
     squared_diffs_per_pos = core.stat_per_residue(start, end, ref_chain, pred_chain,
                                                   core.squared_diffs_between_residues)
