@@ -5,6 +5,7 @@ from Bio import PDB
 
 from scripts.tm import global_tm
 from scripts.rmsd import global_rmsd
+from scripts.plddt import per_residue_plddt
 
 # Path to structures used in tests
 data_path = os.path.join(os.path.dirname(__file__), "data")
@@ -47,6 +48,14 @@ def test_rmsd_integration(length, ref_chain, pred_chain):
     assert rmsd_value >= 0, "RMSD must be non-negative"
 
 
+def test_plddt_integration(length, ref_chain, pred_chain):
+    plddt_scores = per_residue_plddt(0, length, ref_chain, pred_chain)
+    assert len(plddt_scores) == length, "pLDDT scores length mismatch"
+    for score in plddt_scores.values():
+        assert 0 <= score <= 100, "pLDDT score must be between 0 and 100"
+
+
 if __name__ == "__main__":
     test_tm_integration(length, ref_chain, pred_chain)
     test_rmsd_integration(length, ref_chain, pred_chain)
+    test_plddt_integration(length, ref_chain, pred_chain)
