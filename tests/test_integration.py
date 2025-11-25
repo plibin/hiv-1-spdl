@@ -10,7 +10,7 @@ from scripts.plddt import per_residue_plddt
 # Path to structures used in tests
 data_path = os.path.join(os.path.dirname(__file__), "data")
 pdb_pred = os.path.join(data_path, "7leg_af2_pred.pdb")
-pdb_ref = os.path.join(data_path, "7leh_ref.pdb")
+pdb_ref = os.path.join(data_path, "7leg_ref.pdb")
 
 
 def load_ca_chain(pdb_path):
