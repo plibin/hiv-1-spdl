@@ -42,7 +42,7 @@ def is_aa(r: Residue.Residue) -> bool:
 def aa_seq(residues: List[Residue.Residue]) -> str:
     for r in residues:
         if not is_aa(r):
-            raise RuntimeError("Not a amino acide residue!")
+            raise RuntimeError("Not an amino acid residue!")
     return "".join(_res_aa_letter(aa) for aa in residues)
 
 
@@ -83,7 +83,7 @@ def stat_per_residue(start: int, end: int,
     pred_seq = aa_seq(pred_res)[start:end]
     pairs = None
 
-    # Assuming aligned sequences, we can just pair by index. Apparently not trivial.
+    # Assuming aligned sequences, we can just pair by index. Not trivial.
     if ref_seq == pred_seq:
         if len(ref_res) == 0:
             raise RuntimeError("Empty residue lists!")
