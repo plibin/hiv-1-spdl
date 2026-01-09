@@ -1,5 +1,5 @@
 from Bio.PDB import Residue, Chain
-from . import core
+import core
 import numpy as np
 
 

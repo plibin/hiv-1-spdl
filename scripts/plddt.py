@@ -1,6 +1,6 @@
 from Bio.PDB import Chain, Residue
 
-from . import core
+import core
 
 
 def _plldt(ref_r: Residue.Residue, pred_r: Residue.Residue) -> float:
