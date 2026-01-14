@@ -1,7 +1,7 @@
 import numpy as np
 from Bio.PDB import Residue, Chain
 
-from . import core
+import core
 
 
 # TM-score is defined on CA atoms (https://doi.org/10.1093/nar/gki524 Methods Section)
