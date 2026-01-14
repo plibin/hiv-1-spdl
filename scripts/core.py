@@ -5,12 +5,14 @@ import copy
 from typing import List, Sequence, Callable
 from Bio.Data.IUPACData import protein_letters_3to1
 from Bio.PDB import Chain, Residue, Atom, Superimposer
+from Bio.PDB.Polypeptide import is_aa as bio_is_aa
 
 # Mapping for non-standard amino acids
 AA_OVERRIDES = {
     "MSE": "MET",  # Selenomethionine -> MET
     "SEC": "CYS",  # Selenocysteine -> CYS (approximate)
     "PYL": "LYS",  # Pyrrolysine -> LYS (approximate)
+    "CSO": "CYS",  # TODO
 }
 
 
@@ -32,11 +34,13 @@ def squared_diffs_between_residues(ref_r: Residue.Residue, pred_r: Residue.Resid
 def _res_aa_letter(r: Residue.Residue) -> str:
     name = r.get_resname().strip().upper()
     name = AA_OVERRIDES.get(name, name).capitalize()
-    return protein_letters_3to1.get(name)
+    one = protein_letters_3to1.get(name)
+    if one is None: raise KeyError(f"Unknown residue name: {name}")
+    return one
 
 
 def is_aa(r: Residue.Residue) -> bool:
-    return r.id[0] == " " or r.get_resname().strip().upper() in AA_OVERRIDES
+    return bio_is_aa(r)
 
 
 def aa_seq(residues: List[Residue.Residue]) -> str:
