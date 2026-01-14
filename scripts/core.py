@@ -39,6 +39,7 @@ def _res_aa_letter(r: Residue.Residue) -> str:
     return one
 
 
+#TODO: no need for this mapping, use the Bio's is_aa directly
 def is_aa(r: Residue.Residue) -> bool:
     return bio_is_aa(r)
 
