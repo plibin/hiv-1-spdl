@@ -13,6 +13,7 @@ AA_OVERRIDES = {
     "SEC": "CYS",  # Selenocysteine -> CYS (approximate)
     "PYL": "LYS",  # Pyrrolysine -> LYS (approximate)
     "CSO": "CYS",  # TODO
+    "CAF": "CYS",  # TODO
 }
 
 
