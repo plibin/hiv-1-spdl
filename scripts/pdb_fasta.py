@@ -32,7 +32,7 @@ def main():
     for id_ in refs:
         ref_chain = io._first_chain(io._first_model(refs[id_]))
         ref_res = core.aa_residues(ref_chain)
-        print(">" + id_ + " pdb")
+        print(">" + id_.upper() + "_pdb")
         print(core.aa_seq(ref_res))
 
 if __name__ == "__main__":
