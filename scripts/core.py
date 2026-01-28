@@ -14,6 +14,8 @@ AA_OVERRIDES = {
     "PYL": "LYS",  # Pyrrolysine -> LYS (approximate)
     "CSO": "CYS",  # TODO
     "CAF": "CYS",  # TODO
+    "CSD": "CYS",  # TODO
+    "CAS": "CYS",  # TODO
 }
 
 
