@@ -17,7 +17,7 @@ import plddt
 import cli
 from pathlib import Path
 
-#TODO: add a few lines of doc
+#TODO: add a few lines of doc -> get a fasta of the AAs that are actually in the PDB
 def main():
     parser = argparse.ArgumentParser(description="")
     parser.add_argument("--base-path", "-b", required=True)
