@@ -1,0 +1,5 @@
+ground truth PDB's
+query.fasta -> fasta from which the PDB's were predicted (TODO: were did this come from)
+pdb.fasta -> as ground truth PDBs might miss some amino acids that were found in the query.fasta, we generate a fasta of sequences consisting of amino acids that were actually in the PDB
+proteins.txt -> list of all the PDB's considered
+alignment.fasta -> MSA between all sequences in pdb.fasta and query.fasta

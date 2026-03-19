@@ -1,0 +1,2 @@
+AlphaFold2,ESM3-Large,ESMFold,AlphaFold3,ESM3-Open,Ember3D -> predicted PDB's for the different models, based on query.fasta in refs
+refs -> ground truth, details see refs/README 
