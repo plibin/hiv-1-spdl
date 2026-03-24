@@ -1,0 +1,3 @@
+no query for these sequences (but with a PDB): 8F0F, 8FUI, 8FUJ, 6VCE, 7myp.pdb, 7to5.pdb
+There are 3 structures that have a strange insertion: 7DOZ,  7DPQ, 7DT9 -> fix the PDBs 
+7U5Z: has a different amino acid at pos 291 in the query compare to the PDB
