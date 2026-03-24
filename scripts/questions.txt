@@ -1,3 +1,8 @@
 no query for these sequences (but with a PDB): 8F0F, 8FUI, 8FUJ, 6VCE, 7myp.pdb, 7to5.pdb
 There are 3 structures that have a strange insertion: 7DOZ,  7DPQ, 7DT9 -> fix the PDBs 
 7U5Z: has a different amino acid at pos 291 in the query compare to the PDB
+8u6d: has a different amino acid at pos 298 in the query compare to the PDB
+8u6a: has a different amino acid at pos 293 in the query compare to the PDB
+8ffx :has a different amino acid at pos 555 in the query compare to the PDB
+similar problem: 8dxj, 7dbm
+More than one prediction found for ref 7lry for algorithm ESMFold
