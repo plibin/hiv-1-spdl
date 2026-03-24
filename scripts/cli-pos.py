@@ -8,12 +8,15 @@ import plddt
 import cli
 from pathlib import Path
 
+from Bio import SeqIO
+from Bio.SeqRecord import SeqRecord
+
 def main():
     parser = argparse.ArgumentParser(description="CLI for positional statistics.")
     parser.add_argument("--base-path", "-b", required=True)
     parser.add_argument("--protein", "-p",  required=True)
     parser.add_argument("--stat", "-s", choices=["rmsd","plddt"], required=True)
-    parser.add_argument("--range", type=cli.parse_range, required=True)
+    parser.add_argument("--alignment", "-a", required=True)
 
     args = parser.parse_args()
 
@@ -21,11 +24,7 @@ def main():
     
     refs = io.load_refs(base_path, args.protein)
 
-    # Convert 1-based inclusive (PDB convention) to 0-based exclusive (Python convention)
-    start, end = args.range
-    start -= 1
-    # end remains the same because 1-based inclusive end matches 0-based exclusive end
-    # e.g. 1-10 (10 residues) -> 0-10 (10 residues: 0..9)
+    aligned_seqs = SeqIO.to_dict(SeqIO.parse(args.alignment, "fasta"))
 
     dfs = []
     for algorithm in config.algorithms():
@@ -40,13 +39,16 @@ def main():
             r_chain = io._first_chain(io._first_model(r))
             p_chain = io._first_chain(io._first_model(p))
 
+            query_align = aligned_seqs[ref.upper()]
+            ref_pdb_align = aligned_seqs[ref.upper() + "_pdb"]
+
             df = None
             rows = None
             if args.stat == "rmsd":
-                pos_to_rmsd = rmsd.per_residue_rmsd(start, end, r_chain, p_chain)
+                pos_to_rmsd = rmsd.per_residue_rmsd(ref, aligned_seqs, r_chain, p_chain)
                 rows = [{"pos": pos + 1, "RMSD": rmsd} for pos, rmsd in pos_to_rmsd.items()]
             elif args.stat == "plddt":
-                pos_to_plddt = plddt.per_residue_plddt(start, end, r_chain, p_chain)
+                pos_to_plddt = plddt.per_residue_plddt(ref, aligned_seqs, r_chain, p_chain)
                 rows = [{"pos": pos + 1, "pLDDT": plddt} for pos, plddt in pos_to_plddt.items()]
 
             df = pd.DataFrame(rows)

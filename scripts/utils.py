@@ -1,3 +1,5 @@
+import pandas as pd
+
 #TODO: is it OK to use this test, it assume normality, or a large enough dataset?
 def ci95(x: pd.Series) -> tuple[float, float]:
     x = pd.to_numeric(x, errors="coerce").dropna()
@@ -7,3 +9,12 @@ def ci95(x: pd.Series) -> tuple[float, float]:
     sem = stats.sem(x)
     lo, hi = stats.t.interval(0.95, len(x) - 1, loc=mean, scale=sem)
     return lo, hi
+
+def count_overlapping(seq, motif):
+    m = len(motif)
+    count = 0
+    for i in range(len(seq) - m + 1):
+        if seq[i:i+m] == motif:
+            count += 1
+    return count
+

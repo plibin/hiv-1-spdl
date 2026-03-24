@@ -1,4 +1,5 @@
 from Bio.PDB import Chain, Residue
+from Bio.SeqRecord import SeqRecord
 
 import core
 
@@ -11,7 +12,8 @@ def _plldt(ref_r: Residue.Residue, pred_r: Residue.Residue) -> float:
     return float(pred_r["CA"].get_bfactor())
 
 
-def per_residue_plddt(start: int, end: int,
+def per_residue_plddt(id_: str,
+                      alignment: dict[str, SeqRecord],
                       ref_chain: Chain.Chain,
                       pred_chain: Chain.Chain) -> dict[int, float]:
-    return core.stat_per_residue(start, end, ref_chain, pred_chain, _plldt)
+    return core.stat_per_residue(id_, alignment, ref_chain, pred_chain, _plldt)
