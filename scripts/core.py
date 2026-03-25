@@ -14,10 +14,16 @@ AA_OVERRIDES = {
     "MSE": "MET",  # Selenomethionine -> MET
     "SEC": "CYS",  # Selenocysteine -> CYS (approximate)
     "PYL": "LYS",  # Pyrrolysine -> LYS (approximate)
-    "CSO": "CYS",  # TODO
-    "CAF": "CYS",  # TODO
-    "CSD": "CYS",  # TODO
-    "CAS": "CYS",  # TODO
+    # Note on CSO and CAF: CSO is S-hydroxycysteine and CAF is a cross-linked cysteine adduct.
+    # Treating both as plain CYS is defensible as a structural approximation but should be noted explicitly in the paper.
+    "CSO": "CYS",
+    "CAF": "CYS",
+    # Note on CSD: CSD is structurally distinctive, with long sulfur–carbon and sulfur–oxygen bonds and tetrahedral geometry around sulfur due to its lone pair,
+    # and it shows a greater preference for α-helix than unmodified CYS. The modification alters local backbone preferences. For the current CA-based RMSD workflow, mapping CSD → CYS is correct.
+    "CSD": "CYS",
+    # Note on CAS: The backbone is identical to CYS, so for Cα-based RMSD, mapping CAS to CYS is structurally safe as a fallback.
+    # However, CAS is rare, context-dependent, and might warrant runtime waring instead of silent override.
+    "CAS": "CYS",
 }
 
 
@@ -134,6 +140,9 @@ def stat_per_residue(id_: str,
     pred_selection = []
     positions = []
     #TODO: the reported positions follow the positions in the alignment, make sure the alginment starts and ends  correctly!
+
+    # Note: For a typical case where align_start is small (e.g. 2) and align_len is large (e.g. 600), align_len - align_start ≈ 598 — so the loop nearly covers the full range and the bug may not manifest.
+    # But for a case where align_start > align_len / 2, the loop would be empty or truncated. I think the correct upper bound is align_len.
     for i in range(align_start, align_len - align_start):
         if query_align[i] != '-' and ref_pdb_align[i] != '-':
             if query_align[i] != ref_pdb_align[i]:
