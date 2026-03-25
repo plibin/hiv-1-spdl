@@ -1,1 +1,90 @@
+# hiv-1-spdl
+
+Small research-oriented toolkit for comparing predicted HIV-1 protein structures against reference PDB structures.
+
+## What this repository implements
+
+The codebase is centered on three HIV-1 proteins:
+
+- `IN` = integrase
+- `PR` = protease
+- `RT` = reverse transcriptase
+
+For each protein, the repository stores:
+
+- reference PDB structures in `data/<protein>/refs/`
+- predicted structures from multiple folding models in `data/<protein>/<algorithm>/`
+- derived outputs in `results/`
+
+The main analysis goal is to compare predictions to references using:
+
+- per-residue RMSD
+- global RMSD
+- per-residue pLDDT
+- TM-score / local TM-like summaries
+
+## How the code is organized
+
+- `scripts/core.py` — main comparison logic; aligns residues via sequence alignment, superposes structures on `CA` atoms, and computes per-position statistics
+- `scripts/myio.py` — loads reference and predicted PDB structures from the `data/` layout
+- `scripts/rmsd.py` — RMSD helpers
+- `scripts/plddt.py` — extracts per-residue pLDDT from predicted PDB B-factors
+- `scripts/tm.py` — TM-score-related logic
+- `scripts/cli-pos.py` — CLI intended for positional outputs as CSV
+- `scripts/cli-global.py` — CLI intended for global/windowed outputs as CSV
+- `scripts/plot.py` — plots CSV outputs to PNG
+- `scripts/pdb_fasta.py` and `scripts/fasta.sh` — generate PDB-derived FASTA files and alignments used by the residue mapping logic
+- `tests/` — unit/integration tests and toy fixtures
+
+Dependencies are declared in `scripts/pyproject.toml`.
+The CLIs in `scripts/` use local imports (for example `import core`, `import myio`), so they are best treated as standalone scripts run from that directory or with an equivalent `PYTHONPATH`.
+
+## Data layout
+
+The repository expects a fixed directory convention:
+
+```text
+data/
+  IN|PR|RT/
+	refs/
+	  *.pdb              # reference structures
+	  query.fasta        # input sequences used for prediction
+	  pdb.fasta          # sequences extracted from reference PDBs
+	  alignment.fasta    # alignment between query and PDB-derived sequences
+	  proteins.txt
+	AlphaFold2/
+	AlphaFold3/
+	ESMFold/
+	ESM3-Open/
+	ESM3-Large/
+	Ember3D/
+```
+
+`scripts/fasta.sh` shows the intended preprocessing flow: build `pdb.fasta` from the reference PDBs, then align `query.fasta` and `pdb.fasta` with external tools such as MAFFT and SeqKit.
+
+## Intended workflow
+
+1. Put reference PDBs and alignment files under `data/<protein>/refs/`.
+2. Put predicted PDBs under `data/<protein>/<algorithm>/`.
+3. Load references and predictions with `scripts/myio.py`.
+4. Use `scripts/core.py` plus the metric wrappers in `scripts/rmsd.py`, `scripts/plddt.py`, and `scripts/tm.py` to compute scores.
+5. Export CSVs through the CLI scripts.
+6. Turn CSVs into figures with `scripts/plot.py`.
+
+## Notes for coding agents and contributors
+
+Start here if you need to understand or modify behavior:
+
+1. `scripts/core.py`
+2. `scripts/myio.py`
+3. `scripts/cli-pos.py`
+4. `scripts/cli-global.py`
+5. `tests/test_core.py`
+6. `tests/test_integration.py`
+
+Important: this is an active research prototype rather than a fully stabilized package. Some call sites and tests currently use different function signatures for `stat_per_residue`, `global_rmsd`, and `global_tm`, so trace usages before refactoring or adding features.
+
+## In one sentence
+
+This repository is a lightweight HIV-1 structure benchmarking workflow that maps aligned residues between reference and predicted PDBs, computes structural confidence/accuracy statistics, and prepares CSV/plot outputs for model comparison.
 
