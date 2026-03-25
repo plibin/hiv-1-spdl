@@ -1,16 +1,17 @@
 import pytest
 from Bio.PDB import Chain, Residue, Atom
 import numpy as np
-from scripts.core import is_aa, aa_seq, aa_residues, stat_per_residue, squared_diffs_between_residues
+from Bio.PDB.Polypeptide import is_aa as bio_is_aa
+from scripts.core import aa_seq, aa_residues, stat_per_residue, squared_diffs_between_residues
 
 def test_is_aa(sample_chain):
     """Test is_aa function."""
     for residue in sample_chain:
-        assert is_aa(residue)
+        assert bio_is_aa(residue)
 
     # Create a water residue
     water = Residue.Residue(("W", 1, " "), "HOH", " ")
-    assert not is_aa(water)
+    assert not bio_is_aa(water)
 
 def test_aa_seq(sample_chain):
     """Test aa_seq function."""
@@ -29,7 +30,7 @@ def test_is_aa_overrides():
     # MSE is mapped to MET, so it should be considered an AA if we treat it as such
     # But Bio.PDB might read it as HETATM. Let's simulate a HETATM MSE.
     mse = Residue.Residue(("H_MSE", 1, " "), "MSE", " ")
-    assert is_aa(mse)
+    assert bio_is_aa(mse)
 
 def test_squared_diffs_no_common_atoms():
     """Test that ValueError is raised when no common atoms exist."""

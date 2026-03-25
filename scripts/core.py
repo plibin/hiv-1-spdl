@@ -44,20 +44,15 @@ def _res_aa_letter(r: Residue.Residue) -> str:
     return one
 
 
-#TODO: no need for this mapping, use the Bio's is_aa directly
-def is_aa(r: Residue.Residue) -> bool:
-    return bio_is_aa(r)
-
-
 def aa_seq(residues: List[Residue.Residue]) -> str:
     for r in residues:
-        if not is_aa(r):
+        if not bio_is_aa(r):
             raise RuntimeError("Not an amino acid residue!")
     return "".join(_res_aa_letter(aa) for aa in residues)
 
 
 def aa_residues(chain: Chain.Chain) -> List[Residue.Residue]:
-    return [r for r in chain.get_residues() if is_aa(r)]
+    return [r for r in chain.get_residues() if bio_is_aa(r)]
 
 
 def _ca_atoms(residues: Sequence[Residue.Residue]) -> List[Atom.Atom]:
