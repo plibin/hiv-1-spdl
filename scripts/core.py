@@ -104,6 +104,7 @@ def stat_per_residue(id_: str,
 
     #2. Process the ref and pred from the alignment, to superpose the structures, where the amino acids match.
     #TODO: upper is really annoying, fix it upstream (check all use of upper in this regard)
+    # Note: Think we can maybe fix this in myio when loading refs and preds.
     query_align = alignment[id_.upper()].seq
     ref_pdb_align: str = alignment[id_.upper() + "_pdb"].seq
     
