@@ -27,6 +27,10 @@ def _first_model(structure: Structure.Structure) -> Model.Model:
 def _first_chain(model: Model.Model) -> Chain.Chain:
     return next(model.get_chains())
 
+def _get_resseq(path):
+    with open(path) as f:
+        records = list(PdbSeqresIterator(f))
+    return {r.annotations["chain"]: str(r.seq) for r in records}
 
 # load the references, for one protein
 def load_refs(base_path, protein):
@@ -35,6 +39,7 @@ def load_refs(base_path, protein):
     for p in refs_path.iterdir():
         if p.is_file() and p.suffix.lower() == ".pdb":
             refs[p.stem] = parse_structure_pdb(p)
+            refs[p.stem].seqres = get_seqres(p)
 
     return refs
 
@@ -54,5 +59,6 @@ def load_preds(refs, base_path, protein, algorithm):
             raise RuntimeError("More than one prediction found for ref " + ref + " for algorithm " + algorithm)
         else:
             preds[ref] = parse_structure_pdb(matches[0])
+            preds[ref].seqres = get_seqres(matches[0])
 
     return preds
