@@ -35,7 +35,7 @@ def load_refs(base_path: str, protein: str) -> dict[str, Structure.Structure]:
     for p in refs_path.iterdir():
         if p.is_file():
             if p.suffix.lower() == ".pdb":
-                refs[p.stem] = parse_structure_pdb(p)
+                refs[p.stem.upper()] = parse_structure_pdb(p)
             # elif p.suffix.lower() in [".cif", ".mmcif"]:
             #     refs[p.stem] = parse_structure_mmcif(p)
 
