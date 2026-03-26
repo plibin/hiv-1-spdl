@@ -1,30 +1,20 @@
 from __future__ import annotations
 
-import numpy as np
-import copy
-from typing import List, Sequence, Callable
-from Bio.Data.IUPACData import protein_letters_3to1
-from Bio.PDB import Chain, Residue, Atom, Superimposer
-import core
-
 import argparse
-import sys
-import pandas as pd
-import config as config
-import myio as io
-import rmsd
-import plddt
-import cli
 from pathlib import Path
+
+import core
+import myio as io
+
 
 #TODO: add a few lines of doc -> get a fasta of the AAs that are actually in the PDB
 def main():
-    parser = argparse.ArgumentParser(description="")
+    parser = argparse.ArgumentParser(description="CLI for extracting FASTA sequences from PDB files.")
     parser.add_argument("--base-path", "-b", required=True)
     parser.add_argument("--protein", "-p", required=True)
 
     args = parser.parse_args()
-    
+
     base_path = Path(args.base_path)
 
     refs = io.load_refs(base_path, args.protein)
@@ -35,6 +25,6 @@ def main():
         print(">" + id_.upper() + "_pdb")
         print(core.aa_seq(ref_res))
 
+
 if __name__ == "__main__":
     main()
-
