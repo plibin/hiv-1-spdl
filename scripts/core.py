@@ -139,9 +139,7 @@ def stat_per_residue(id_: str,
     positions = []
     #TODO: the reported positions follow the positions in the alignment, make sure the alginment starts and ends  correctly!
 
-    # Note: For a typical case where align_start is small (e.g. 2) and align_len is large (e.g. 600), align_len - align_start ≈ 598 — so the loop nearly covers the full range and the bug may not manifest.
-    # But for a case where align_start > align_len / 2, the loop would be empty or truncated. I think the correct upper bound is align_len.
-    for i in range(align_start, align_len - align_start):
+    for i in range(align_start, align_len):
         if pred_align[i] != '-' and ref_align[i] != '-':
             if pred_align[i] != ref_align[i]:
                 raise Exception("Query and PDB don't match in the alignment!")
