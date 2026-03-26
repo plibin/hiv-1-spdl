@@ -3,6 +3,8 @@ from __future__ import annotations
 import sys
 from pathlib import Path
 
+from Bio.SeqIO.PdbIO import PdbSeqresIterator
+
 from Bio.PDB import PDBParser, MMCIFParser, Structure, Model, Chain
 
 
@@ -40,7 +42,7 @@ def load_refs(base_path: str, protein: str) -> dict[str, Structure.Structure]:
         if p.is_file():
             if p.suffix.lower() == ".pdb":
                 refs[p.stem.upper()] = parse_structure_pdb(p)
-                refs[p.stem].seqres = get_seqres(p)
+                refs[p.stem.upper()].seqres = _get_resseq(p)
             #TODO: no need to deal with cif files? everything is converteed to pdb?
             # elif p.suffix.lower() in [".cif", ".mmcif"]:
             #     refs[p.stem] = parse_structure_mmcif(p)
@@ -63,6 +65,6 @@ def load_preds(refs: dict[str, Structure.Structure], base_path: str, protein: st
             raise RuntimeError("More than one prediction found for ref " + ref + " for algorithm " + algorithm)
         else:
             preds[ref] = parse_structure_pdb(matches[0])
-            preds[ref].seqres = get_seqres(matches[0])
+            preds[ref].seqres = _get_resseq(matches[0])
 
     return preds
