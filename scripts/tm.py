@@ -12,12 +12,17 @@ def _dist(r_ref: Residue.Residue, r_pred: Residue.Residue) -> float:
     return float(np.linalg.norm(diff))
 
 
-def global_tm(start: int, end: int, ref_chain: Chain.Chain, pred_chain: Chain.Chain) -> float:
-    pos_to_d_i = core.stat_per_residue(start, end, ref_chain, pred_chain, _dist)
+def global_tm(id_: str,
+              ref_align,
+              pred_align,
+              ref_chain: Chain.Chain,
+              pred_chain: Chain.Chain) -> float:
+    # Normalize by the reference length represented in the alignment.
+    L_N = sum(1 for aa in ref_align if aa != "-")
+    if L_N == 0:
+        raise ValueError("Reference alignment contains no residues")
 
-    # Note: We use L_N = end - start (window length) instead of full native length.
-    # This computes a "local TM-score" normalized by the window size.
-    L_N = end - start
+    pos_to_d_i = core.stat_per_residue(id_, ref_align, pred_align, ref_chain, pred_chain, _dist)
 
     # As specified in the original TM-score paper: 10.1002/prot.20264,
     # d_i  is the distance between the i-th pair of aligned residues,
