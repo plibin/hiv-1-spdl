@@ -1,3 +1,6 @@
+add a check that the seqres in the refs is the same as in the corresponding preds
+rm fasta.py
+rm diff.py
 properly name and document fasta.sh
 add alignments to git
 explain 5b223cd6f4ff0d9f2dfd504df47517bb057daa43 in the paper
