@@ -1,7 +1,7 @@
 import argparse
-import sys
 
-def parse_range(s):
+
+def parse_range(s: str):
     try:
         start, end = map(int, s.split('-'))
         return start, end
