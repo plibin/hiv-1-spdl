@@ -42,8 +42,8 @@ def load_refs(base_path, protein):
 # load the predictions, for one protein, for one algorithm
 def load_preds(refs, base_path, protein, algorithm):
     preds = {}
+    algo_path = base_path / protein / algorithm
     for ref in refs.keys():
-        algo_path = base_path / protein / algorithm
         matches = []
         for p in algo_path.iterdir():
             if p.stem.lower().startswith(ref.lower()) and p.suffix.lower() == ".pdb":
