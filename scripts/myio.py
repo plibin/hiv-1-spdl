@@ -29,7 +29,7 @@ def _first_chain(model: Model.Model) -> Chain.Chain:
 
 
 # load the references, for one protein
-def load_refs(base_path, protein):
+def load_refs(base_path: str, protein: str) -> dict[str, Structure.Structure]:
     refs = {}
     refs_path = base_path / protein / "refs"
     for p in refs_path.iterdir():
@@ -40,7 +40,7 @@ def load_refs(base_path, protein):
 
 
 # load the predictions, for one protein, for one algorithm
-def load_preds(refs, base_path, protein, algorithm):
+def load_preds(refs: dict[str, Structure.Structure], base_path: str, protein: str, algorithm: str) -> dict[str, Structure.Structure]:
     preds = {}
     algo_path = base_path / protein / algorithm
     for ref in refs.keys():
