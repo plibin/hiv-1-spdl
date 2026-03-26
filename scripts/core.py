@@ -71,7 +71,7 @@ def first_motif_idx(chain, motif):
 
     m = len(motif)
     for i in range(len(residues) - m + 1):
-        window = residues[i:i+m]
+        window = residues[i:i + m]
         window_str = "".join(_res_aa_letter(r) for r in window)
         if window_str == motif:
             start = window[0]
@@ -79,11 +79,25 @@ def first_motif_idx(chain, motif):
 
     return None
 
+
 def get_res(residues, idx):
     for r in residues:
         if r.id[1] == idx:
             return r
     return None
+
+
+def _find_alignment_start(ref_align, pred_align):
+    align_len = len(pred_align)
+    if align_len != len(ref_align):
+        raise Exception("Alignment sizes differ!")
+
+    for i in range(align_len):
+        if pred_align[i] != '-' and ref_align[i] != '-':
+            return i, align_len
+
+    raise Exception("Could not find alignment start point!")
+
 
 def stat_per_residue(id_: str,
                      alignment: dict[str, SeqRecord],
@@ -102,23 +116,7 @@ def stat_per_residue(id_: str,
     ref_res = aa_residues(ref_chain)
     pred_res = aa_residues(pred_chain)
 
-    #2. Process the ref and pred from the alignment, to superpose the structures, where the amino acids match.
-    #TODO: upper is really annoying, fix it upstream (check all use of upper in this regard)
-    # Note: Think we can maybe fix this in myio when loading refs and preds.
-    query_align = alignment[id_.upper()].seq
-    ref_pdb_align: str = alignment[id_.upper() + "_pdb"].seq
-    
-    align_start = None
-    align_len = len(query_align)
-    if align_len != len(ref_pdb_align):
-        raise Exception("Alignment sizes differ!")
-
-    for i in range(align_len):
-        if query_align[i] != '-' and ref_pdb_align[i] != '-':
-            align_start = i
-            break
-    if align_start is None:
-        raise Exception("Could not find alignment start point!")
+    align_start, align_len = _find_alignment_start(ref_align, pred_align)
 
     #TODO: this is a tricky part, I hope the explanation is a bit clear, otherwise we can discuss
     #Since the residues in the PDBs do not necessarily follow the same
@@ -176,7 +174,7 @@ def stat_per_residue(id_: str,
     #Extract CA atoms
     ref_cas = [x["CA"] for x in ref_selection]
     pred_cas = [x["CA"] for x in pred_selection]
-    
+
     sup.set_atoms(ref_cas, pred_cas)
     # Apply transform to every atom in pred residues to ensure the whole chain moves
     all_pred_atoms = [a for r in pred_res for a in r.get_atoms()]
