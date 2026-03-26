@@ -11,17 +11,18 @@ from pathlib import Path
 from Bio import SeqIO
 from Bio.SeqRecord import SeqRecord
 
+
 def main():
     parser = argparse.ArgumentParser(description="CLI for positional statistics.")
     parser.add_argument("--base-path", "-b", required=True)
-    parser.add_argument("--protein", "-p",  required=True)
-    parser.add_argument("--stat", "-s", choices=["rmsd","plddt"], required=True)
+    parser.add_argument("--protein", "-p", required=True)
+    parser.add_argument("--stat", "-s", choices=["rmsd", "plddt"], required=True)
     parser.add_argument("--alignment", "-a", required=True)
 
     args = parser.parse_args()
 
     base_path = Path(args.base_path)
-    
+
     refs = io.load_refs(base_path, args.protein)
 
     aligned_seqs = SeqIO.to_dict(SeqIO.parse(args.alignment, "fasta"))
@@ -30,9 +31,6 @@ def main():
     for algorithm in config.algorithms():
         preds = io.load_preds(refs, base_path, args.protein, algorithm)
         for ref in refs.keys():
-            if ref not in preds:
-                print(f"Warning: No prediction for ref {ref} with algorithm {algorithm}, skipping.", file=sys.stderr)
-                continue
             r = refs[ref]
             p = preds[ref]
 
@@ -55,9 +53,10 @@ def main():
             df["Algorithm"] = algorithm
             df["ref"] = ref
             dfs.append(df)
-                
+
     combined_df = pd.concat(dfs, ignore_index=True)
     combined_df.to_csv(sys.stdout, index=False)
+
 
 if __name__ == "__main__":
     main()
