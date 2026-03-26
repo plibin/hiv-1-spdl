@@ -100,9 +100,9 @@ def _find_alignment_start(ref_align, pred_align):
 
 
 def stat_per_residue(id_: str,
-                     alignment: dict[str, SeqRecord],
+                     ref_align, pred_align,
                      ref_chain: Chain.Chain, pred_chain: Chain.Chain,
-                     stat: Callable[[Residue.Residue, Residue.Residue], float]) -> dict[int, float]:    
+                     stat: Callable[[Residue.Residue, Residue.Residue], float]) -> dict[int, float]:
     # Deep copy the predicted chain to avoid in-place mutation side effects
     pred_chain = copy.deepcopy(pred_chain)
 
@@ -123,13 +123,12 @@ def stat_per_residue(id_: str,
     #positional numbering (TODO: add some additional explanation), we need to find the start position based on
     #a motif that occurs in both structures.
     motif_size = 5
-    motif = query_align[align_start:align_start + motif_size]
+    motif = pred_align[align_start:align_start + motif_size]
     if '-' in motif:
-        raise Exception("Motif has a gap!")
-    if ref_pdb_align[align_start:align_start + motif_size] != motif:
+        raise Exception(f"Motif {motif} has a gap!")
+    if ref_align[align_start:align_start + motif_size] != motif:
         raise Exception("Query and PDB have different starting motifs!")
-    if count_overlapping(query_align, motif) > 1 or \
-       count_overlapping(ref_pdb_align, motif) > 1 :
+    if count_overlapping(pred_align, motif) > 1 or count_overlapping(ref_align, motif) > 1:
         raise Exception("Ambiguous motif!")
 
     ref_start_idx = first_motif_idx(ref_chain, motif)
@@ -143,8 +142,8 @@ def stat_per_residue(id_: str,
     # Note: For a typical case where align_start is small (e.g. 2) and align_len is large (e.g. 600), align_len - align_start ≈ 598 — so the loop nearly covers the full range and the bug may not manifest.
     # But for a case where align_start > align_len / 2, the loop would be empty or truncated. I think the correct upper bound is align_len.
     for i in range(align_start, align_len - align_start):
-        if query_align[i] != '-' and ref_pdb_align[i] != '-':
-            if query_align[i] != ref_pdb_align[i]:
+        if pred_align[i] != '-' and ref_align[i] != '-':
+            if pred_align[i] != ref_align[i]:
                 raise Exception("Query and PDB don't match in the alignment!")
 
             #get_res returns None if it is a gap
@@ -162,7 +161,6 @@ def stat_per_residue(id_: str,
 
                 if _res_aa_letter(ref) != _res_aa_letter(pred):
                     raise Exception("Ref and pred don't match in the PDB!")
-           
 
     #3. Superpose pred onto ref using CA pairs (in-place), *only* in the region where the amino acids overlap.
     #  Note: This means atoms outside the range are not necessarily aligned, which is intended for local analysis.

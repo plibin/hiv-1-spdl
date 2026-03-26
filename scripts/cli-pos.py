@@ -37,17 +37,17 @@ def main():
             r_chain = io._first_chain(io._first_model(r))
             p_chain = io._first_chain(io._first_model(p))
 
-            query_align = aligned_seqs[ref.upper()]
-            ref_pdb_align = aligned_seqs[ref.upper() + "_pdb"]
+            r_align = aligned_seqs[ref + "_pdb"].seq
+            p_align = aligned_seqs[ref].seq
 
             df = None
             rows = None
             if args.stat == "rmsd":
-                pos_to_rmsd = rmsd.per_residue_rmsd(ref, aligned_seqs, r_chain, p_chain)
-                rows = [{"pos": pos + 1, "RMSD": rmsd} for pos, rmsd in pos_to_rmsd.items()]
+                pos_to_rmsd = rmsd.per_residue_rmsd(ref, r_align, p_align, r_chain, p_chain)
+                rows = [{"pos": pos + 1, "RMSD": rmsd_value} for pos, rmsd_value in pos_to_rmsd.items()]
             elif args.stat == "plddt":
-                pos_to_plddt = plddt.per_residue_plddt(ref, aligned_seqs, r_chain, p_chain)
-                rows = [{"pos": pos + 1, "pLDDT": plddt} for pos, plddt in pos_to_plddt.items()]
+                pos_to_plddt = plddt.per_residue_plddt(ref, r_align, p_align, r_chain, p_chain)
+                rows = [{"pos": pos + 1, "pLDDT": plddt_value} for pos, plddt_value in pos_to_plddt.items()]
 
             df = pd.DataFrame(rows)
             df["Algorithm"] = algorithm
