@@ -13,7 +13,7 @@ def _plldt(ref_r: Residue.Residue, pred_r: Residue.Residue) -> float:
 
 
 def per_residue_plddt(id_: str,
-                      alignment: dict[str, SeqRecord],
+                      ref_align, pred_align,
                       ref_chain: Chain.Chain,
                       pred_chain: Chain.Chain) -> dict[int, float]:
-    return core.stat_per_residue(id_, alignment, ref_chain, pred_chain, _plldt)
+    return core.stat_per_residue(id_, ref_align, pred_align, ref_chain, pred_chain, _plldt)

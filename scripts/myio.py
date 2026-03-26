@@ -33,22 +33,26 @@ def _get_resseq(path):
     return {r.annotations["chain"]: str(r.seq) for r in records}
 
 # load the references, for one protein
-def load_refs(base_path, protein):
+def load_refs(base_path: str, protein: str) -> dict[str, Structure.Structure]:
     refs = {}
     refs_path = base_path / protein / "refs"
     for p in refs_path.iterdir():
-        if p.is_file() and p.suffix.lower() == ".pdb":
-            refs[p.stem] = parse_structure_pdb(p)
-            refs[p.stem].seqres = get_seqres(p)
+        if p.is_file():
+            if p.suffix.lower() == ".pdb":
+                refs[p.stem.upper()] = parse_structure_pdb(p)
+                refs[p.stem].seqres = get_seqres(p)
+            #TODO: no need to deal with cif files? everything is converteed to pdb?
+            # elif p.suffix.lower() in [".cif", ".mmcif"]:
+            #     refs[p.stem] = parse_structure_mmcif(p)
 
     return refs
 
 
 # load the predictions, for one protein, for one algorithm
-def load_preds(refs, base_path, protein, algorithm):
+def load_preds(refs: dict[str, Structure.Structure], base_path: str, protein: str, algorithm: str) -> dict[str, Structure.Structure]:
     preds = {}
+    algo_path = base_path / protein / algorithm
     for ref in refs.keys():
-        algo_path = base_path / protein / algorithm
         matches = []
         for p in algo_path.iterdir():
             if p.stem.lower().startswith(ref.lower()) and p.suffix.lower() == ".pdb":

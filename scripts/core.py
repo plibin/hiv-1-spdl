@@ -14,10 +14,16 @@ AA_OVERRIDES = {
     "MSE": "MET",  # Selenomethionine -> MET
     "SEC": "CYS",  # Selenocysteine -> CYS (approximate)
     "PYL": "LYS",  # Pyrrolysine -> LYS (approximate)
-    "CSO": "CYS",  # TODO
-    "CAF": "CYS",  # TODO
-    "CSD": "CYS",  # TODO
-    "CAS": "CYS",  # TODO
+    # Note on CSO and CAF: CSO is S-hydroxycysteine and CAF is a cross-linked cysteine adduct.
+    # Treating both as plain CYS is defensible as a structural approximation but should be noted explicitly in the paper.
+    "CSO": "CYS",
+    "CAF": "CYS",
+    # Note on CSD: CSD is structurally distinctive, with long sulfur–carbon and sulfur–oxygen bonds and tetrahedral geometry around sulfur due to its lone pair,
+    # and it shows a greater preference for α-helix than unmodified CYS. The modification alters local backbone preferences. For the current CA-based RMSD workflow, mapping CSD → CYS is correct.
+    "CSD": "CYS",
+    # Note on CAS: The backbone is identical to CYS, so for Cα-based RMSD, mapping CAS to CYS is structurally safe as a fallback.
+    # However, CAS is rare, context-dependent, and might warrant runtime waring instead of silent override.
+    "CAS": "CYS",
 }
 
 
@@ -44,20 +50,15 @@ def _res_aa_letter(r: Residue.Residue) -> str:
     return one
 
 
-#TODO: no need for this mapping, use the Bio's is_aa directly
-def is_aa(r: Residue.Residue) -> bool:
-    return bio_is_aa(r)
-
-
 def aa_seq(residues: List[Residue.Residue]) -> str:
     for r in residues:
-        if not is_aa(r):
+        if not bio_is_aa(r):
             raise RuntimeError("Not an amino acid residue!")
     return "".join(_res_aa_letter(aa) for aa in residues)
 
 
 def aa_residues(chain: Chain.Chain) -> List[Residue.Residue]:
-    return [r for r in chain.get_residues() if is_aa(r)]
+    return [r for r in chain.get_residues() if bio_is_aa(r)]
 
 
 def _ca_atoms(residues: Sequence[Residue.Residue]) -> List[Atom.Atom]:
@@ -70,7 +71,7 @@ def first_motif_idx(chain, motif):
 
     m = len(motif)
     for i in range(len(residues) - m + 1):
-        window = residues[i:i+m]
+        window = residues[i:i + m]
         window_str = "".join(_res_aa_letter(r) for r in window)
         if window_str == motif:
             start = window[0]
@@ -78,16 +79,30 @@ def first_motif_idx(chain, motif):
 
     return None
 
+
 def get_res(residues, idx):
     for r in residues:
         if r.id[1] == idx:
             return r
     return None
 
+
+def _find_alignment_start(ref_align, pred_align):
+    align_len = len(pred_align)
+    if align_len != len(ref_align):
+        raise Exception("Alignment sizes differ!")
+
+    for i in range(align_len):
+        if pred_align[i] != '-' and ref_align[i] != '-':
+            return i, align_len
+
+    raise Exception("Could not find alignment start point!")
+
+
 def stat_per_residue(id_: str,
-                     alignment: dict[str, SeqRecord],
+                     ref_align, pred_align,
                      ref_chain: Chain.Chain, pred_chain: Chain.Chain,
-                     stat: Callable[[Residue.Residue, Residue.Residue], float]) -> dict[int, float]:    
+                     stat: Callable[[Residue.Residue, Residue.Residue], float]) -> dict[int, float]:
     # Deep copy the predicted chain to avoid in-place mutation side effects
     pred_chain = copy.deepcopy(pred_chain)
 
@@ -101,35 +116,19 @@ def stat_per_residue(id_: str,
     ref_res = aa_residues(ref_chain)
     pred_res = aa_residues(pred_chain)
 
-    #2. Process the ref and pred from the alignment, to superpose the structures, where the amino acids match.
-    #TODO: upper is really annoying, fix it upstream (check all use of upper in this regard)
-    query_align = alignment[id_.upper()].seq
-    ref_pdb_align: str = alignment[id_.upper() + "_pdb"].seq
-    
-    align_start = None
-    align_len = len(query_align)
-    if align_len != len(ref_pdb_align):
-        raise Exception("Alignment sizes differ!")
-
-    for i in range(align_len):
-        if query_align[i] != '-' and ref_pdb_align[i] != '-':
-            align_start = i
-            break
-    if align_start is None:
-        raise Exception("Could not find alignment start point!")
+    align_start, align_len = _find_alignment_start(ref_align, pred_align)
 
     #TODO: this is a tricky part, I hope the explanation is a bit clear, otherwise we can discuss
     #Since the residues in the PDBs do not necessarily follow the same
     #positional numbering (TODO: add some additional explanation), we need to find the start position based on
     #a motif that occurs in both structures.
     motif_size = 5
-    motif = query_align[align_start:align_start + motif_size]
+    motif = pred_align[align_start:align_start + motif_size]
     if '-' in motif:
-        raise Exception("Motif has a gap!")
-    if ref_pdb_align[align_start:align_start + motif_size] != motif:
+        raise Exception(f"Motif {motif} has a gap!")
+    if ref_align[align_start:align_start + motif_size] != motif:
         raise Exception("Query and PDB have different starting motifs!")
-    if count_overlapping(query_align, motif) > 1 or \
-       count_overlapping(ref_pdb_align, motif) > 1 :
+    if count_overlapping(pred_align, motif) > 1 or count_overlapping(ref_align, motif) > 1:
         raise Exception("Ambiguous motif!")
 
     ref_start_idx = first_motif_idx(ref_chain, motif)
@@ -139,9 +138,10 @@ def stat_per_residue(id_: str,
     pred_selection = []
     positions = []
     #TODO: the reported positions follow the positions in the alignment, make sure the alginment starts and ends  correctly!
-    for i in range(align_start, align_len - align_start):
-        if query_align[i] != '-' and ref_pdb_align[i] != '-':
-            if query_align[i] != ref_pdb_align[i]:
+
+    for i in range(align_start, align_len):
+        if pred_align[i] != '-' and ref_align[i] != '-':
+            if pred_align[i] != ref_align[i]:
                 raise Exception("Query and PDB don't match in the alignment!")
 
             #get_res returns None if it is a gap
@@ -159,7 +159,6 @@ def stat_per_residue(id_: str,
 
                 if _res_aa_letter(ref) != _res_aa_letter(pred):
                     raise Exception("Ref and pred don't match in the PDB!")
-           
 
     #3. Superpose pred onto ref using CA pairs (in-place), *only* in the region where the amino acids overlap.
     #  Note: This means atoms outside the range are not necessarily aligned, which is intended for local analysis.
@@ -171,7 +170,7 @@ def stat_per_residue(id_: str,
     #Extract CA atoms
     ref_cas = [x["CA"] for x in ref_selection]
     pred_cas = [x["CA"] for x in pred_selection]
-    
+
     sup.set_atoms(ref_cas, pred_cas)
     # Apply transform to every atom in pred residues to ensure the whole chain moves
     all_pred_atoms = [a for r in pred_res for a in r.get_atoms()]
