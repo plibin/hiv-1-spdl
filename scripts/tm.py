@@ -13,11 +13,11 @@ def _dist(r_ref: Residue.Residue, r_pred: Residue.Residue) -> float:
 
 
 def global_tm(id_: str,
-              alignment: dict[str, SeqRecord],
+              ref_align, pred_align,
               ref_chain: Chain.Chain,
               pred_chain: Chain.Chain,
               L_N: int) -> float:
-    pos_to_d_i = core.stat_per_residue(id_, alignment, ref_chain, pred_chain, _dist)
+    pos_to_d_i = core.stat_per_residue(id_, ref_align, pred_align, ref_chain, pred_chain, _dist)
 
     # As specified in the original TM-score paper: 10.1002/prot.20264,
     # d_i  is the distance between the i-th pair of aligned residues,
