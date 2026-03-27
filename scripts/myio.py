@@ -43,7 +43,7 @@ def load_refs(base_path: str, protein: str) -> dict[str, Structure.Structure]:
             if p.suffix.lower() == ".pdb":
                 refs[p.stem.upper()] = parse_structure_pdb(p)
                 refs[p.stem.upper()].seqres = _get_resseq(p)
-            #TODO: no need to deal with cif files? everything is converteed to pdb?
+            #TODO: no need to deal with cif files? everything is converted to pdb? --> ../data/IN/refs/7l2y.cif
             # elif p.suffix.lower() in [".cif", ".mmcif"]:
             #     refs[p.stem] = parse_structure_mmcif(p)
 
