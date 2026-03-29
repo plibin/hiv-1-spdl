@@ -8,12 +8,15 @@ import tm
 import cli
 from pathlib import Path
 
+from Bio import SeqIO
+
 
 def main():
     parser = argparse.ArgumentParser(description="CLI for global statistics.")
     parser.add_argument("--base-path", "-b", required=True)
     parser.add_argument("--protein", "-p", required=True)
     parser.add_argument("--stat", "-s", choices=["rmsd", "tm"], required=True)
+    parser.add_argument("--alignment", "-a", required=True)
     parser.add_argument("--range", type=cli.parse_range, required=True)
 
     args = parser.parse_args()
@@ -21,6 +24,8 @@ def main():
     base_path = Path(args.base_path)
 
     refs = io.load_refs(base_path, args.protein)
+
+    aligned_seqs = SeqIO.to_dict(SeqIO.parse(args.alignment, "fasta"))
 
     # Convert 1-based inclusive (PDB convention) to 0-based exclusive (Python convention)
     start, end = args.range
@@ -30,18 +35,28 @@ def main():
     for algorithm in config.algorithms():
         preds = io.load_preds(refs, base_path, args.protein, algorithm)
         for ref in refs.keys():
+            if ref not in preds:
+                print(f"Skipping {algorithm}/{ref}: no prediction found", file=sys.stderr)
+                continue
+            if ref not in aligned_seqs or ref + "_pdb" not in aligned_seqs:
+                print(f"Skipping {algorithm}/{ref}: missing alignment record", file=sys.stderr)
+                continue
+
             r = refs[ref]
             p = preds[ref]
 
             r_chain = io._first_chain(io._first_model(r))
             p_chain = io._first_chain(io._first_model(p))
 
+            r_align = aligned_seqs[ref + "_pdb"].seq
+            p_align = aligned_seqs[ref].seq
+
             row = {}
             if args.stat == "rmsd":
-                g_rmsd = rmsd.global_rmsd(start, end, r_chain, p_chain)
+                g_rmsd = rmsd.global_rmsd(ref, r_align, p_align, r_chain, p_chain)
                 row["RMSD"] = g_rmsd
             elif args.stat == "tm":
-                g_tm = tm.global_tm(start, end, r_chain, p_chain)
+                g_tm = tm.global_tm(ref, r_align, p_align, r_chain, p_chain)
                 row["TM"] = g_tm
 
             row["Algorithm"] = algorithm
