@@ -1,15 +1,14 @@
 import argparse
 import sys
+from pathlib import Path
+
 import pandas as pd
 import config as config
 import myio as io
 import rmsd
 import plddt
-import cli
-from pathlib import Path
 
 from Bio import SeqIO
-from Bio.SeqRecord import SeqRecord
 
 
 def main():
@@ -31,6 +30,13 @@ def main():
     for algorithm in config.algorithms():
         preds = io.load_preds(refs, base_path, args.protein, algorithm)
         for ref in refs.keys():
+            if ref not in preds:
+                print(f"Skipping {algorithm}/{ref}: no prediction found", file=sys.stderr)
+                continue
+            if ref not in aligned_seqs or ref + "_pdb" not in aligned_seqs:
+                print(f"Skipping {algorithm}/{ref}: missing alignment record", file=sys.stderr)
+                continue
+
             r = refs[ref]
             p = preds[ref]
 
@@ -40,7 +46,6 @@ def main():
             r_align = aligned_seqs[ref + "_pdb"].seq
             p_align = aligned_seqs[ref].seq
 
-            df = None
             rows = None
             if args.stat == "rmsd":
                 pos_to_rmsd = rmsd.per_residue_rmsd(ref, r_align, p_align, r_chain, p_chain)
