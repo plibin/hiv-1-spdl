@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import sys
+
 import numpy as np
 import copy
 from utils import count_overlapping
@@ -134,6 +136,10 @@ def stat_per_residue(id_: str,
     ref_start_idx = first_motif_idx(ref_chain, motif)
     pred_start_idx = first_motif_idx(pred_chain, motif)
 
+    if ref_start_idx is None or pred_start_idx is None:
+        print(f"No start for motif {motif} in ref or pred chain in {id_}", file=sys.stderr)
+        return {}
+
     ref_selection = []
     pred_selection = []
     positions = []
@@ -142,7 +148,7 @@ def stat_per_residue(id_: str,
     for i in range(align_start, align_len):
         if pred_align[i] != '-' and ref_align[i] != '-':
             if pred_align[i] != ref_align[i]:
-                raise Exception("Query and PDB don't match in the alignment!")
+                print(f"{id_}: Query {pred_align[i]} and PDB {ref_align[i]} don't match in the alignment.", file=sys.stderr)
 
             #get_res returns None if it is a gap
             ref = get_res(ref_res, i + ref_start_idx)
@@ -158,7 +164,8 @@ def stat_per_residue(id_: str,
                     raise RuntimeError("No CA atom in amino acid!")
 
                 if _res_aa_letter(ref) != _res_aa_letter(pred):
-                    raise Exception("Ref and pred don't match in the PDB!")
+                    print(f"Ref {_res_aa_letter(ref)} and pred {_res_aa_letter(pred)} don't match in the PDB in {id_}!", file=sys.stderr)
+                    return {}
 
     #3. Superpose pred onto ref using CA pairs (in-place), *only* in the region where the amino acids overlap.
     #  Note: This means atoms outside the range are not necessarily aligned, which is intended for local analysis.
