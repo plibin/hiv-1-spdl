@@ -28,7 +28,7 @@ def main():
 
     dfs = []
     for algorithm in config.algorithms():
-        preds = io.load_preds(refs, base_path, args.protein, algorithm)
+        preds, _ = io.load_preds(refs, base_path, args.protein, algorithm)
         for ref in refs.keys():
             if ref not in preds:
                 print(f"Skipping {algorithm}/{ref}: no prediction found", file=sys.stderr)

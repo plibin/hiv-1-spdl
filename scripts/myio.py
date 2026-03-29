@@ -51,8 +51,9 @@ def load_refs(base_path: str, protein: str) -> dict[str, Structure.Structure]:
 
 
 # load the predictions, for one protein, for one algorithm
-def load_preds(refs: dict[str, Structure.Structure], base_path: str, protein: str, algorithm: str) -> dict[str, Structure.Structure]:
+def load_preds(refs: dict[str, Structure.Structure], base_path: str, protein: str, algorithm: str) -> tuple[dict[str, Structure.Structure], list[str]]:
     preds = {}
+    missing = []
     algo_path = base_path / protein / algorithm
     for ref in refs.keys():
         matches = []
@@ -60,11 +61,11 @@ def load_preds(refs: dict[str, Structure.Structure], base_path: str, protein: st
             if p.stem.lower().startswith(ref.lower()) and p.suffix.lower() == ".pdb":
                 matches.append(p)
         if len(matches) == 0:
-            print("No prediction found for ref " + ref + " for algorithm " + algorithm, file=sys.stderr)
+            missing.append(ref)
         elif len(matches) > 1:
             raise RuntimeError("More than one prediction found for ref " + ref + " for algorithm " + algorithm)
         else:
             preds[ref] = parse_structure_pdb(matches[0])
             preds[ref].seqres = _get_resseq(matches[0])
 
-    return preds
+    return preds, missing
