@@ -6,3 +6,7 @@ no query for these sequences (but with a PDB): 8F0F, 8FUI, 8FUJ, 6VCE, 7myp.pdb,
 8ffx :has a different amino acid at pos 555 in the query compare to the PDB
 similar problem: 8dxj, 7dbm
 More than one prediction found for ref 7lry for algorithm ESMFold
+
+_find_alignment_start finds the first position where neither ref nor pred has a gap. Is this necessarily the correct position?
+What if there is a gap immediately after? This then causes a motif-related exception. Maybe there is a more suitable way to find the alignment start position,
+e.g., by looking for a stretch of five or more consecutive positions where neither ref nor pred has a gap?
