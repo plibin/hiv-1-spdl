@@ -10,3 +10,5 @@ More than one prediction found for ref 7lry for algorithm ESMFold
 _find_alignment_start finds the first position where neither ref nor pred has a gap. Is this necessarily the correct position?
 What if there is a gap immediately after? This then causes a motif-related exception. Maybe there is a more suitable way to find the alignment start position,
 e.g., by looking for a stretch of five or more consecutive positions where neither ref nor pred has a gap?
+
+Why does data/IN/AlphaFold2/i7sia.pdb have the "i"? Can we just rename this file?
