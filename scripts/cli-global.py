@@ -5,7 +5,6 @@ import config as config
 import myio as io
 import rmsd
 import tm
-import cli
 from pathlib import Path
 
 from Bio import SeqIO
@@ -17,7 +16,6 @@ def main():
     parser.add_argument("--protein", "-p", required=True)
     parser.add_argument("--stat", "-s", choices=["rmsd", "tm"], required=True)
     parser.add_argument("--alignment", "-a", required=True)
-    parser.add_argument("--range", type=cli.parse_range, required=True)
 
     args = parser.parse_args()
 
@@ -27,13 +25,9 @@ def main():
 
     aligned_seqs = SeqIO.to_dict(SeqIO.parse(args.alignment, "fasta"))
 
-    # Convert 1-based inclusive (PDB convention) to 0-based exclusive (Python convention)
-    start, end = args.range
-    start -= 1
-
     rows = []
     for algorithm in config.algorithms():
-        preds = io.load_preds(refs, base_path, args.protein, algorithm)
+        preds, _ = io.load_preds(refs, base_path, args.protein, algorithm)
         for ref in refs.keys():
             if ref not in preds:
                 print(f"Skipping {algorithm}/{ref}: no prediction found", file=sys.stderr)
