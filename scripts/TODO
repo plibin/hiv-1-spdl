@@ -4,3 +4,16 @@ rm diff.py
 properly name and document fasta.sh
 add alignments to git
 explain 5b223cd6f4ff0d9f2dfd504df47517bb057daa43 in the paper
+
+The sequence used for prediction of IN/6VRG structure differs between Ember3D and the other algorithms:
+Unique sequence groups:
+Group 1: AlphaFold2, ESMFold, ESM3-Large, ESM3-Open
+  len=163
+  seq=MHGQVDCSPGIWQLDCTHLEGKVILVAVHVASGYIEAEVIPAETGQETAYFLLKLAGRWPVKTVHTDNGSNFTSTTVKAACDWAGIKQEDGIPYNPQSQGVIESMNKELKKIIGQVRDQAEHLKTAVQMAVFIHNKKRKGGIGGYSAGERIVDIIATDIQTKE
+Group 2: Ember3D
+  len=212
+  seq=FLDGIDKAQEEHEKYHSNWRAMASDFNLPPVVAKEIVASCDKCQLKGEAMHGQVDCSPGIWQLDCTHLEGKVILVAVHVASGYIEAEVIPAETGQETAYFLLKLAGRWPVKTVHTDNGSNFTSTTVKAACDWAGIKQEDGIPYNPQSQGVIESMNKELKKIIGQVRDQAEHLKTAVQMAVFIHNKKRKGGIGGYSAGERIVDIIATDIQTKE
+The non-Ember predictors do not all use exactly the same sequence, but they all start from the shorter core beginning with: MHGQVDCSPGI...
+Ember3D is the outlier, using the full-length sequence beginning with: FLDGIDKAQ...
+Meanwhile the SEQRES and ATOM records in the reference PDB file used for IN/6VRG, which are used to create the alignment, contain the longer sequences.
+Because the motif is calculated from the alignment, this causes the core logic to abort on 6VRG for non-Ember3D predictions since the motif is not found in the shorter sequences.
