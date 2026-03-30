@@ -37,4 +37,7 @@ def global_tm(id_: str,
 
     terms = [1.0 / (1.0 + (d_i / d_0) ** 2) for d_i in pos_to_d_i.values()]
 
-    return sum(terms) / float(L_N)
+    if L_N == 0:
+        return 0
+    else:
+        return sum(terms) / float(L_N)
