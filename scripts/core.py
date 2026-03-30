@@ -137,7 +137,7 @@ def stat_per_residue(id_: str,
     pred_start_idx = first_motif_idx(pred_chain, motif)
 
     if ref_start_idx is None or pred_start_idx is None:
-        print(f"No start for motif {motif} in ref or pred chain in {id_}", file=sys.stderr)
+        print(f"{id_}: No start for motif {motif} in ref or pred chain", file=sys.stderr)
         return {}
 
     ref_selection = []
@@ -164,7 +164,7 @@ def stat_per_residue(id_: str,
                     raise RuntimeError("No CA atom in amino acid!")
 
                 if _res_aa_letter(ref) != _res_aa_letter(pred):
-                    print(f"Ref {_res_aa_letter(ref)} and pred {_res_aa_letter(pred)} don't match in the PDB in {id_}!", file=sys.stderr)
+                    print(f"{id_}: ref_aa {_res_aa_letter(ref)} and pred_aa {_res_aa_letter(pred)} don't match in the PDB!", file=sys.stderr)
                     return {}
 
     #3. Superpose pred onto ref using CA pairs (in-place), *only* in the region where the amino acids overlap.
