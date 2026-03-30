@@ -101,6 +101,28 @@ def _find_alignment_start(ref_align, pred_align):
     raise Exception("Could not find alignment start point!")
 
 
+def _resolve_start_motif(ref_align, pred_align, align_start: int, motif_size: int = 5) -> str:
+    motif = pred_align[align_start:align_start + motif_size]
+    if '-' in motif:
+        raise Exception(f"Motif {motif} has a gap!")
+    if ref_align[align_start:align_start + motif_size] != motif:
+        raise Exception("Query and PDB have different starting motifs!")
+    if count_overlapping(pred_align, motif) > 1 or count_overlapping(ref_align, motif) > 1:
+        raise Exception("Ambiguous motif!")
+    return motif
+
+
+def _resolve_chain_start_indices(id_: str, motif: str, ref_chain: Chain.Chain, pred_chain: Chain.Chain) -> tuple[int, int] | None:
+    ref_start_idx = first_motif_idx(ref_chain, motif)
+    pred_start_idx = first_motif_idx(pred_chain, motif)
+
+    if ref_start_idx is None or pred_start_idx is None:
+        print(f"{id_}: No start for motif {motif} in ref or pred chain", file=sys.stderr)
+        return None
+
+    return ref_start_idx, pred_start_idx
+
+
 def stat_per_residue(id_: str,
                      ref_align, pred_align,
                      ref_chain: Chain.Chain, pred_chain: Chain.Chain,
@@ -120,25 +142,12 @@ def stat_per_residue(id_: str,
 
     align_start, align_len = _find_alignment_start(ref_align, pred_align)
 
-    #TODO: this is a tricky part, I hope the explanation is a bit clear, otherwise we can discuss
-    #Since the residues in the PDBs do not necessarily follow the same
-    #positional numbering (TODO: add some additional explanation), we need to find the start position based on
-    #a motif that occurs in both structures.
-    motif_size = 5
-    motif = pred_align[align_start:align_start + motif_size]
-    if '-' in motif:
-        raise Exception(f"Motif {motif} has a gap!")
-    if ref_align[align_start:align_start + motif_size] != motif:
-        raise Exception("Query and PDB have different starting motifs!")
-    if count_overlapping(pred_align, motif) > 1 or count_overlapping(ref_align, motif) > 1:
-        raise Exception("Ambiguous motif!")
-
-    ref_start_idx = first_motif_idx(ref_chain, motif)
-    pred_start_idx = first_motif_idx(pred_chain, motif)
-
-    if ref_start_idx is None or pred_start_idx is None:
-        print(f"{id_}: No start for motif {motif} in ref or pred chain", file=sys.stderr)
+    # Find and validate a unique motif at alignment start to anchor chain numbering.
+    motif = _resolve_start_motif(ref_align, pred_align, align_start)
+    starts = _resolve_chain_start_indices(id_, motif, ref_chain, pred_chain)
+    if starts is None:
         return {}
+    ref_start_idx, pred_start_idx = starts
 
     ref_selection = []
     pred_selection = []
