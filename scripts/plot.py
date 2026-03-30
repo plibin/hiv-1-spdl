@@ -5,6 +5,7 @@ import matplotlib.pyplot as plt
 from matplotlib.patches import Patch
 import pandas as pd
 import seaborn as sns
+from matplotlib.pyplot import ylabel
 
 SECONDARY_STRUCTURES = {
     "PR": [(13, 19, 'sheet'), (25, 28, 'helix'), (45, 55, 'sheet'), (59, 64, 'sheet'),
@@ -61,7 +62,7 @@ def _add_secondary_structure_legend(ax) -> None:
 def plot_rmsd(df, protein: str, plot_sec_struct: bool = True):
     if plot_sec_struct:
         _plot_secondary_structure_background(df, protein)
-    ax = sns.lineplot(data=df, x="pos", y="RMSD (Å)", hue="Algorithm")
+    ax = sns.lineplot(data=df, x="pos", y="RMSD", hue="Algorithm", ylabel="RMSD (Å)")
     if plot_sec_struct:
         _add_secondary_structure_legend(ax)
     
@@ -81,7 +82,7 @@ def plot_plddt(df, protein: str, plot_sec_struct: bool = True):
     
 
 def plot_grmsd(df):
-    sns.boxplot(data=df, x="Algorithm", y="RMSD (Å)")
+    sns.boxplot(data=df, x="Algorithm", y="RMSD (Å)", ylabel="RMSD (Å)")
     
 
 def plot_tm(df):
