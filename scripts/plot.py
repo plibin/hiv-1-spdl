@@ -62,7 +62,7 @@ def _add_secondary_structure_legend(ax) -> None:
 def plot_rmsd(df, protein: str, plot_sec_struct: bool = True):
     if plot_sec_struct:
         _plot_secondary_structure_background(df, protein)
-    ax = sns.lineplot(data=df, x="pos", y="RMSD", hue="Algorithm", ylabel="RMSD (Å)")
+    ax = sns.lineplot(data=df, x="pos", y="RMSD", hue="Algorithm")
     if plot_sec_struct:
         _add_secondary_structure_legend(ax)
     
@@ -82,7 +82,7 @@ def plot_plddt(df, protein: str, plot_sec_struct: bool = True):
     
 
 def plot_grmsd(df):
-    sns.boxplot(data=df, x="Algorithm", y="RMSD (Å)", ylabel="RMSD (Å)")
+    sns.boxplot(data=df, x="Algorithm", y="RMSD")
     
 
 def plot_tm(df):
@@ -98,7 +98,6 @@ def main():
                         help="Protein for secondary-structure overlays in line plots")
     args = parser.parse_args()
 
-    print(args.csv_path)
     df = pd.read_csv(args.csv_path)
     if args.type == "rmsd":
         plot_rmsd(df, plot_sec_struct=True, protein=args.protein)
