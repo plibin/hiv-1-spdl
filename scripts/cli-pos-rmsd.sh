@@ -7,9 +7,13 @@
 
 data_dir="../data"
 results_dir="../results"
+logs_dir="../results/logs"
 
 # Create results directory if it doesn't exist
 mkdir -p "$results_dir"
+
+# Create logs directory if it doesn't exist
+mkdir -p "$logs_dir"
 
 # Array of proteins from config.py
 proteins=("PR" "IN" "RT")
@@ -23,7 +27,7 @@ for protein in "${proteins[@]}"; do
     alignment_file="$data_dir/$protein/refs/alignment.fasta"
     protein_lower=$(echo "$protein" | tr '[:upper:]' '[:lower:]')
     output_csv="$results_dir/${protein_lower}-pos-rmsd.csv"
-    output_log="$results_dir/${protein_lower}-pos-rmsd.stderr.log"
+    output_log="$logs_dir/${protein_lower}-pos-rmsd.stderr.log"
 
     # Check if alignment file exists
     if [ ! -f "$alignment_file" ]; then
