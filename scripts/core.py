@@ -155,28 +155,26 @@ def stat_per_residue(id_: str,
     #TODO: the reported positions follow the positions in the alignment, make sure the alginment starts and ends  correctly!
 
     for i in range(align_start, align_len):
-        # TODO: What if one of them has a gap but the other doesn't? I have a feeling this is causing the mismatch in AA's for IN/7SIA.
-        # I think this logic that advances a pointer (i) through both the alignment and the Chains at the same time/pace might be causing bugs.
-        if pred_align[i] != '-' and ref_align[i] != '-':
-            if pred_align[i] != ref_align[i]:
-                print(f"{id_}: Query {pred_align[i]} and PDB {ref_align[i]} don't match in the alignment at pos {i}", file=sys.stderr)
+        # Skip any column with a gap before doing residue lookup/logging.
+        if pred_align[i] == '-' or ref_align[i] == '-':
+            continue
 
-            #get_res returns None if it is a gap
-            ref = get_res(ref_res, i + ref_start_idx)
-            pred = get_res(pred_res, i + pred_start_idx)
+        if pred_align[i] != ref_align[i]:
+            print(f"{id_}: Query {pred_align[i]} and PDB {ref_align[i]} don't match in the alignment at pos {i}", file=sys.stderr)
 
-            #check if ref or pred has a gap
-            if ref is not None and pred is not None:
-                if "CA" in ref and "CA" in pred:
-                    ref_selection.append(ref)
-                    pred_selection.append(pred)
-                    positions.append(i)
-                else:
-                    raise RuntimeError("No CA atom in amino acid!")
+        ref = get_res(ref_res, i + ref_start_idx)
+        pred = get_res(pred_res, i + pred_start_idx)
 
-                if _res_aa_letter(ref) != _res_aa_letter(pred):
-                    print(f"{id_}: ref_aa {_res_aa_letter(ref)} and pred_aa {_res_aa_letter(pred)} don't match in the PDB at pos {i}", file=sys.stderr)
-                    # return {}
+        if ref is not None and pred is not None:
+            if "CA" in ref and "CA" in pred:
+                ref_selection.append(ref)
+                pred_selection.append(pred)
+                positions.append(i)
+            else:
+                raise RuntimeError("No CA atom in amino acid!")
+
+            if _res_aa_letter(ref) != _res_aa_letter(pred):
+                print(f"{id_}: ref_aa {_res_aa_letter(ref)} and pred_aa {_res_aa_letter(pred)} don't match in the PDB at pos {i}", file=sys.stderr)
 
     #3. Superpose pred onto ref using CA pairs (in-place), *only* in the region where the amino acids overlap.
     #  Note: This means atoms outside the range are not necessarily aligned, which is intended for local analysis.
