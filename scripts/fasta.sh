@@ -11,6 +11,6 @@ python pdb_fasta.py --base-path $data_dir --protein PR > $data_dir/PR/refs/pdb.f
 python pdb_fasta.py --base-path $data_dir --protein IN > $data_dir/IN/refs/pdb.fasta
 
 #align
-cat "$data_dir/RT/refs/query.fasta" "$data_dir/RT/refs/pdb.fasta" | mafft --auto - | seqkit sort > "$data_dir/RT/refs/alignment.fasta" 
-cat "$data_dir/PR/refs/query.fasta" "$data_dir/PR/refs/pdb.fasta" | mafft --auto - | seqkit sort > "$data_dir/PR/refs/alignment.fasta" 
-cat "$data_dir/IN/refs/query.fasta" "$data_dir/IN/refs/pdb.fasta" | mafft --auto - | seqkit sort > "$data_dir/IN/refs/alignment.fasta" 
+cat "$data_dir/RT/refs/hxb2.fasta" "$data_dir/RT/refs/query.fasta" "$data_dir/RT/refs/pdb.fasta" | mafft --auto - | seqkit sort > "$data_dir/RT/refs/alignment.fasta" 
+cat "$data_dir/PR/refs/hxb2.fasta" "$data_dir/PR/refs/query.fasta" "$data_dir/PR/refs/pdb.fasta" | mafft --auto - | seqkit sort > "$data_dir/PR/refs/alignment.fasta" 
+cat "$data_dir/IN/refs/hxb2.fasta" "$data_dir/IN/refs/query.fasta" "$data_dir/IN/refs/pdb.fasta" | mafft --auto - | seqkit sort > "$data_dir/IN/refs/alignment.fasta" 
