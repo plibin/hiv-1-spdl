@@ -1,3 +1,5 @@
+fasta.sh: WARNING: no SEQRES
+mention that the IN alignment was cleaned
 is there p15 in the RT alignment -> clarify in the paper
 add a check that the seqres in the refs is the same as in the corresponding preds
 rm fasta.py
