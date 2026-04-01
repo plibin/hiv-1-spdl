@@ -14,3 +14,7 @@ python pdb_fasta.py --base-path $data_dir --protein IN > $data_dir/IN/refs/pdb.f
 cat "$data_dir/RT/refs/hxb2.fasta" "$data_dir/RT/refs/query.fasta" "$data_dir/RT/refs/pdb.fasta" | mafft --auto - | seqkit sort > "$data_dir/RT/refs/alignment.fasta" 
 cat "$data_dir/PR/refs/hxb2.fasta" "$data_dir/PR/refs/query.fasta" "$data_dir/PR/refs/pdb.fasta" | mafft --auto - | seqkit sort > "$data_dir/PR/refs/alignment.fasta" 
 cat "$data_dir/IN/refs/hxb2.fasta" "$data_dir/IN/refs/query.fasta" "$data_dir/IN/refs/pdb.fasta" | mafft --auto - | seqkit sort > "$data_dir/IN/refs/alignment.fasta" 
+
+#IN alignment has quite a bit of loose ends at the left side: trim the left side by replacing all these loose ends with gaps
+python trim_alignment_left.py "$data_dir/IN/refs/alignment.fasta" 55 > "$data_dir/IN/refs/alignment.fasta.clean"
+mv "$data_dir/IN/refs/alignment.fasta.clean" "$data_dir/IN/refs/alignment.fasta" 
