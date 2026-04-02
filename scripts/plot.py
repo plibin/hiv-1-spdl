@@ -10,7 +10,7 @@ from matplotlib.pyplot import ylabel
 SECONDARY_STRUCTURES = {
     "PR": [(13, 19, 'sheet'), (25, 28, 'helix'), (45, 55, 'sheet'), (59, 64, 'sheet'),
            (67, 72, 'sheet'), (76, 81, 'sheet'), (84, 90, 'sheet'), (95, 99, 'helix')],
-    "IN": [(11, 23, 'helix'), (32, 42, 'helix'), (55, 63, 'sheet'), (70, 82, 'helix'),
+    "IN": [(55, 63, 'sheet'), (70, 82, 'helix'),
            (101, 112, 'helix'), (121, 133, 'sheet'), (138, 147, 'sheet')],
     "RT": [(14, 24, 'helix'), (38, 47, 'helix'), (57, 66, 'sheet'), (71, 81, 'sheet'),
            (94, 105, 'helix'), (119, 128, 'helix'), (145, 154, 'sheet'), (174, 183, 'helix'),
