@@ -68,7 +68,7 @@ def _ca_atoms(residues: Sequence[Residue.Residue]) -> List[Atom.Atom]:
     return [r["CA"] for r in residues if "CA" in r]
 
 
-def first_motif_idx(chain, motif):
+def first_motif_res(id_, chain, motif):
     residues = aa_residues(chain)
 
     m = len(motif)
@@ -77,17 +77,16 @@ def first_motif_idx(chain, motif):
         window_str = "".join(_res_aa_letter(r) for r in window)
         if window_str == motif:
             start = window[0]
-            return start.id[1]
+            return start
 
-    return None
+    raise RuntimeError(f"{id_}: No start for motif {motif} in chain")
 
-
-def get_res(residues, idx):
-    for r in residues:
-        if r.id[1] == idx:
-            return r
-    return None
-
+def next_res(chain, current_res):
+    residues = aa_residues(chain)
+    for i, r in enumerate(residues):
+        if r is current_res:
+            return residues[i + 1] if i + 1 < len(residues) else None
+    raise RuntimeError("Current residue not found in residue list")
 
 def _find_alignment_start(ref_align, pred_align):
     align_len = len(pred_align)
@@ -112,17 +111,6 @@ def _resolve_start_motif(ref_align, pred_align, align_start: int, motif_size: in
     return motif
 
 
-def _resolve_chain_start_indices(id_: str, motif: str, ref_chain: Chain.Chain, pred_chain: Chain.Chain) -> tuple[int, int] | None:
-    ref_start_idx = first_motif_idx(ref_chain, motif)
-    pred_start_idx = first_motif_idx(pred_chain, motif)
-
-    if ref_start_idx is None or pred_start_idx is None:
-        print(f"{id_}: No start for motif {motif} in ref or pred chain", file=sys.stderr)
-        return None
-
-    return ref_start_idx, pred_start_idx
-
-
 def stat_per_residue(id_: str,
                      ref_align, pred_align,
                      ref_chain: Chain.Chain, pred_chain: Chain.Chain,
@@ -137,44 +125,63 @@ def stat_per_residue(id_: str,
     #4. We return a dict of position (as in the alignment!) with their corresponding score as computed by stat().
 
     #1. Filter to amino-acid residues only.
-    ref_res = aa_residues(ref_chain)
-    pred_res = aa_residues(pred_chain)
+    ref_residues = aa_residues(ref_chain)
+    pred_residues = aa_residues(pred_chain)
 
     align_start, align_len = _find_alignment_start(ref_align, pred_align)
 
     # Find and validate a unique motif at alignment start to anchor chain numbering.
     motif = _resolve_start_motif(ref_align, pred_align, align_start)
-    starts = _resolve_chain_start_indices(id_, motif, ref_chain, pred_chain)
-    if starts is None:
-        return {}
-    ref_start_idx, pred_start_idx = starts
+
+    # We use residues to navigate through the chains (jumping from one res to the next one),
+    # since the residue index does not necessarily follow the gaps in the alignment. 
+    ref_res = first_motif_res(id_, ref_chain, motif)
+    pred_res = first_motif_res(id_, pred_chain, motif)
 
     ref_selection = []
     pred_selection = []
     positions = []
+
     #TODO: the reported positions follow the positions in the alignment, make sure the alginment starts and ends  correctly!
 
+    #TODO!!!: given that this has been a particular hard to get right,
+    #perhaps a sanity check is warranted, write the  
     for i in range(align_start, align_len):
-        # Skip any column with a gap before doing residue lookup/logging.
-        if pred_align[i] == '-' or ref_align[i] == '-':
+        # Both the pred and ref have a gap in the alignment: safe to skip.
+        if pred_align[i] == '-' and ref_align[i] == '-':
+            continue
+
+        # Unexpected gap in the pred (i.e., query): raise error
+        if pred_align[i] == '-' and ref_align[i] != '-':
+            raise RuntimeError(f"Unexpected gap in pred at pos {i} for id {id_}")
+
+        # It can happen that the ref PDB has gaps, as it is the result of a wet lab experiment.
+        # We ignore the position, but first move to the next residue for the pred.
+        if pred_align[i] != '-' and ref_align[i] == '-':
+            pred_res = next_res(pred_chain, pred_res)
             continue
 
         if pred_align[i] != ref_align[i]:
             print(f"{id_}: Query {pred_align[i]} and PDB {ref_align[i]} don't match in the alignment at pos {i}", file=sys.stderr)
 
-        ref = get_res(ref_res, i + ref_start_idx)
-        pred = get_res(pred_res, i + pred_start_idx)
+        if ref_res is None or pred_res is None:
+            raise RuntimeError("Missing residues")
 
-        if ref is not None and pred is not None:
-            if "CA" in ref and "CA" in pred:
-                ref_selection.append(ref)
-                pred_selection.append(pred)
-                positions.append(i)
-            else:
-                raise RuntimeError("No CA atom in amino acid!")
+        ref_res_aa = _res_aa_letter(ref_res)
+        pred_res_aa = _res_aa_letter(pred_res)
+        if ref_res_aa != pred_res_aa:
+            print(f"{id_}: ref_aa {ref_res_aa} and pred_aa {pred_res_aa} don't match in the PDB at pos {i}", file=sys.stderr)
+        
+        if "CA" in ref_res and "CA" in pred_res:
+            ref_selection.append(ref_res)
+            pred_selection.append(pred_res)
+            positions.append(i)
 
-            if _res_aa_letter(ref) != _res_aa_letter(pred):
-                print(f"{id_}: ref_aa {_res_aa_letter(ref)} and pred_aa {_res_aa_letter(pred)} don't match in the PDB at pos {i}", file=sys.stderr)
+            pred_res = next_res(pred_chain, pred_res)
+            ref_res = next_res(ref_chain, ref_res)
+        else:
+            raise RuntimeError("No CA atom in amino acid!")
+
 
     #3. Superpose pred onto ref using CA pairs (in-place), *only* in the region where the amino acids overlap.
     #  Note: This means atoms outside the range are not necessarily aligned, which is intended for local analysis.
@@ -189,7 +196,7 @@ def stat_per_residue(id_: str,
 
     sup.set_atoms(ref_cas, pred_cas)
     # Apply transform to every atom in pred residues to ensure the whole chain moves
-    all_pred_atoms = [a for r in pred_res for a in r.get_atoms()]
+    all_pred_atoms = [a for r in pred_residues for a in r.get_atoms()]
     sup.apply(all_pred_atoms)
 
     #4. Apply a function stat to each pair of residues of chain ref and pred, between start-end.
