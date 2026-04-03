@@ -3,7 +3,7 @@ import numpy as np
 from scipy import stats
 
 
-#TODO: is it OK to use this test, it assume normality, or a large enough dataset?
+#TODO!!!: is it OK to use this test, it assume normality, or a large enough dataset?
 def ci95(x: pd.Series) -> tuple[float, float]:
     x = pd.to_numeric(x, errors="coerce").dropna()
     if len(x) < 2:

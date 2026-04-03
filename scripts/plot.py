@@ -7,6 +7,7 @@ import pandas as pd
 import seaborn as sns
 from matplotlib.pyplot import ylabel
 
+#TODO!!!: regarding the gap on the left for IN, perhaps don't show these structures if there is no data in the region of the structure?
 SECONDARY_STRUCTURES = {
     "PR": [(13, 19, 'sheet'), (25, 28, 'helix'), (45, 55, 'sheet'), (59, 64, 'sheet'),
            (67, 72, 'sheet'), (76, 81, 'sheet'), (84, 90, 'sheet'), (95, 99, 'helix')],
@@ -108,8 +109,8 @@ def main():
     elif args.type == "tm":
         plot_tm(df)
 
+    #TODO!!!: let's save as EPS (with a high DPI)
     plt.savefig(args.csv_path.stem + ".png", format="png", dpi=300)
-
 
 if __name__ == "__main__":
     main()
