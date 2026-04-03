@@ -26,6 +26,10 @@ AA_OVERRIDES = {
     # Note on CAS: The backbone is identical to CYS, so for Cα-based RMSD, mapping CAS to CYS is structurally safe as a fallback.
     # However, CAS is rare, context-dependent, and might warrant runtime waring instead of silent override.
     "CAS": "CYS",
+    # OCS (S-hydroxycysteine / cysteinesulfenic acid): oxidised cysteine found
+    # e.g. in IN ref 7L2Y.  Backbone geometry is essentially identical to CYS,
+    # so the Cα-based RMSD mapping is sound.
+    "OCS": "CYS",
 }
 
 
