@@ -1,7 +1,7 @@
-from Bio.PDB import Residue, Chain
-from Bio.SeqRecord import SeqRecord
-import core
 import numpy as np
+from Bio.PDB import Residue, Chain
+
+import core
 
 
 def _rmsd_between_residues(r_ref: Residue.Residue, r_pred: Residue.Residue):

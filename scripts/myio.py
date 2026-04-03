@@ -1,11 +1,9 @@
 from __future__ import annotations
 
-import sys
 from pathlib import Path
 
-from Bio.SeqIO.PdbIO import PdbSeqresIterator
-
 from Bio.PDB import PDBParser, MMCIFParser, Structure, Model, Chain
+from Bio.SeqIO.PdbIO import PdbSeqresIterator
 
 
 def parse_structure_pdb(path: Path) -> Structure.Structure:
@@ -29,10 +27,12 @@ def _first_model(structure: Structure.Structure) -> Model.Model:
 def _first_chain(model: Model.Model) -> Chain.Chain:
     return next(model.get_chains())
 
+
 def _get_resseq(path):
     with open(path) as f:
         records = list(PdbSeqresIterator(f))
     return {r.annotations["chain"]: str(r.seq) for r in records}
+
 
 # load the references, for one protein
 def load_refs(base_path: str, protein: str) -> dict[str, Structure.Structure]:
@@ -43,15 +43,13 @@ def load_refs(base_path: str, protein: str) -> dict[str, Structure.Structure]:
             if p.suffix.lower() == ".pdb":
                 refs[p.stem.upper()] = parse_structure_pdb(p)
                 refs[p.stem.upper()].seqres = _get_resseq(p)
-            #TODO: no need to deal with cif files? everything is converted to pdb? --> ../data/IN/refs/7l2y.cif
-            # elif p.suffix.lower() in [".cif", ".mmcif"]:
-            #     refs[p.stem] = parse_structure_mmcif(p)
 
     return refs
 
 
 # load the predictions, for one protein, for one algorithm
-def load_preds(refs: dict[str, Structure.Structure], base_path: str, protein: str, algorithm: str) -> tuple[dict[str, Structure.Structure], list[str]]:
+def load_preds(refs: dict[str, Structure.Structure], base_path: str, protein: str, algorithm: str) -> tuple[
+    dict[str, Structure.Structure], list[str]]:
     preds = {}
     missing = []
     algo_path = base_path / protein / algorithm
