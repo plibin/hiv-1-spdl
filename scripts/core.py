@@ -142,8 +142,6 @@ def stat_per_residue(id_: str,
     pred_selection = []
     positions = []
 
-    #TODO: the reported positions follow the positions in the alignment, make sure the alginment starts and ends  correctly!
-
     #TODO!!!: given that this has been a particular hard to get right,
     #perhaps a sanity check is warranted, write the  
     for i in range(align_start, align_len):
