@@ -2,12 +2,10 @@ import argparse
 from pathlib import Path
 
 import matplotlib.pyplot as plt
-from matplotlib.patches import Patch
 import pandas as pd
 import seaborn as sns
-from matplotlib.pyplot import ylabel
+from matplotlib.patches import Patch
 
-#TODO!!!: regarding the gap on the left for IN, perhaps don't show these structures if there is no data in the region of the structure?
 SECONDARY_STRUCTURES = {
     "PR": [(13, 19, 'sheet'), (25, 28, 'helix'), (45, 55, 'sheet'), (59, 64, 'sheet'),
            (67, 72, 'sheet'), (76, 81, 'sheet'), (84, 90, 'sheet'), (95, 99, 'helix')],
@@ -28,8 +26,8 @@ SECONDARY_STRUCTURES = {
 }
 
 # Pastel colors for secondary-structure background regions.
-HELIX_BG_COLOR = "#cfe8ff"   # pastel light blue
-SHEET_BG_COLOR = "#ffd6d6"   # pastel light red
+HELIX_BG_COLOR = "#cfe8ff"  # pastel light blue
+SHEET_BG_COLOR = "#ffd6d6"  # pastel light red
 
 
 def _infer_protein_from_positions(df: pd.DataFrame) -> str:
@@ -66,7 +64,7 @@ def plot_rmsd(df, protein: str, plot_sec_struct: bool = True):
     ax = sns.lineplot(data=df, x="pos", y="RMSD", hue="Algorithm")
     if plot_sec_struct:
         _add_secondary_structure_legend(ax)
-    
+
 
 def plot_plddt(df, protein: str, plot_sec_struct: bool = True):
     if plot_sec_struct:
@@ -80,11 +78,11 @@ def plot_plddt(df, protein: str, plot_sec_struct: bool = True):
     ax = sns.lineplot(data=df, x="pos", y="pLDDT", hue="Algorithm")
     if plot_sec_struct:
         _add_secondary_structure_legend(ax)
-    
+
 
 def plot_grmsd(df):
     sns.boxplot(data=df, x="Algorithm", y="RMSD")
-    
+
 
 def plot_tm(df):
     sns.boxplot(data=df, x="Algorithm", y="TM")
@@ -109,8 +107,8 @@ def main():
     elif args.type == "tm":
         plot_tm(df)
 
-    #TODO!!!: let's save as EPS (with a high DPI)
-    plt.savefig(args.csv_path.stem + ".png", format="png", dpi=300)
+    plt.savefig(args.csv_path.stem + ".eps", format="eps", dpi=500)
+
 
 if __name__ == "__main__":
     main()
