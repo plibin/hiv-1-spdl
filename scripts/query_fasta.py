@@ -40,8 +40,7 @@ What this script does (and why):
    the pipeline.
 2) Select the first model and first chain from each structure.
    Why: the downstream pipeline compares one chain per structure.
-3) Read the SEQRES sequence for that chain; fall back to the ATOM sequence
-   (with a warning) if no SEQRES record is present.
+3) Read the SEQRES sequence for that chain; fall back to overrides if there is not SEQRES in the PDB.
    Why: SEQRES represents the full biological sequence the structure was meant
    to capture, making it a better query for aligning model predictions that
    were generated from a complete sequence rather than a partial structure.
