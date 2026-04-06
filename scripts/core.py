@@ -1,15 +1,15 @@
 from __future__ import annotations
 
+import copy
 import sys
+from typing import List, Sequence, Callable
 
 import numpy as np
-import copy
-from utils import count_overlapping
-from Bio.SeqRecord import SeqRecord
-from typing import List, Sequence, Callable
 from Bio.Data.IUPACData import protein_letters_3to1
 from Bio.PDB import Chain, Residue, Atom, Superimposer
 from Bio.PDB.Polypeptide import is_aa as bio_is_aa
+
+from utils import count_overlapping
 
 # Mapping for non-standard amino acids
 AA_OVERRIDES = {
@@ -26,6 +26,10 @@ AA_OVERRIDES = {
     # Note on CAS: The backbone is identical to CYS, so for Cα-based RMSD, mapping CAS to CYS is structurally safe as a fallback.
     # However, CAS is rare, context-dependent, and might warrant runtime waring instead of silent override.
     "CAS": "CYS",
+    # OCS (S-hydroxycysteine / cysteinesulfenic acid): oxidised cysteine found
+    # e.g. in IN ref 7L2Y.  Backbone geometry is essentially identical to CYS,
+    # so the Cα-based RMSD mapping is sound.
+    "OCS": "CYS",
 }
 
 
@@ -81,12 +85,14 @@ def first_motif_res(id_, chain, motif):
 
     raise RuntimeError(f"{id_}: No start for motif {motif} in chain")
 
+
 def next_res(chain, current_res):
     residues = aa_residues(chain)
     for i, r in enumerate(residues):
         if r is current_res:
             return residues[i + 1] if i + 1 < len(residues) else None
     raise RuntimeError("Current residue not found in residue list")
+
 
 def _find_alignment_start(ref_align, pred_align):
     align_len = len(pred_align)
@@ -142,8 +148,6 @@ def stat_per_residue(id_: str,
     pred_selection = []
     positions = []
 
-    #TODO: the reported positions follow the positions in the alignment, make sure the alginment starts and ends  correctly!
-
     #TODO!!!: given that this has been a particular hard to get right,
     #perhaps a sanity check is warranted, write the  
     for i in range(align_start, align_len):
@@ -162,7 +166,8 @@ def stat_per_residue(id_: str,
             continue
 
         if pred_align[i] != ref_align[i]:
-            print(f"{id_}: Query {pred_align[i]} and PDB {ref_align[i]} don't match in the alignment at pos {i}", file=sys.stderr)
+            print(f"{id_}: Query {pred_align[i]} and PDB {ref_align[i]} don't match in the alignment at pos {i}",
+                  file=sys.stderr)
 
         if ref_res is None or pred_res is None:
             raise RuntimeError("Missing residues")
@@ -170,8 +175,9 @@ def stat_per_residue(id_: str,
         ref_res_aa = _res_aa_letter(ref_res)
         pred_res_aa = _res_aa_letter(pred_res)
         if ref_res_aa != pred_res_aa:
-            print(f"{id_}: ref_aa {ref_res_aa} and pred_aa {pred_res_aa} don't match in the PDB at pos {i}", file=sys.stderr)
-        
+            print(f"{id_}: ref_aa {ref_res_aa} and pred_aa {pred_res_aa} don't match in the PDB at pos {i}",
+                  file=sys.stderr)
+
         if "CA" in ref_res and "CA" in pred_res:
             ref_selection.append(ref_res)
             pred_selection.append(pred_res)
@@ -181,7 +187,6 @@ def stat_per_residue(id_: str,
             ref_res = next_res(ref_chain, ref_res)
         else:
             raise RuntimeError("No CA atom in amino acid!")
-
 
     #3. Superpose pred onto ref using CA pairs (in-place), *only* in the region where the amino acids overlap.
     #  Note: This means atoms outside the range are not necessarily aligned, which is intended for local analysis.

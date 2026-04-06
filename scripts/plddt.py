@@ -1,10 +1,9 @@
 from Bio.PDB import Chain, Residue
-from Bio.SeqRecord import SeqRecord
 
 import core
 
 
-def _plldt(ref_r: Residue.Residue, pred_r: Residue.Residue) -> float:
+def _plldt(_, pred_r: Residue.Residue) -> float:
     # pDDT is typically stored in the B-factor field.
     # AlphaFold stores the same value for all atoms in a residue, so checking CA is sufficient.
     # Code also should work for ESMFold predictions, only there the pLDDT values might be in eather [0,100] or [0,1] range.

@@ -4,3 +4,6 @@ is there p15 in the RT alignment -> clarify in the paper
 add a check that the seqres in the refs is the same as in the corresponding preds -> this should be fine now?
 properly name and document fasta.sh
 explain 5b223cd6f4ff0d9f2dfd504df47517bb057daa43 in the paper
+
+From core.py: the reported positions follow the positions in the alignment, make sure the alginment starts and ends  correctly!
+Removed this since we added the reference sequence to the alignment and have visually inspected alignments multiple times. So we are sure they start and end correctly.
