@@ -5,6 +5,7 @@ from Bio.PDB import MMCIFParser, PDBIO
 def cif_to_pdb(cif_path: Path):
     # Parse the CIF structure
     parser = MMCIFParser(QUIET=True)
+    parser = MMCIFParser(QUIET=True, auth_chains=False)
     structure_id = cif_path.stem
     structure = parser.get_structure(structure_id, cif_path)
 
