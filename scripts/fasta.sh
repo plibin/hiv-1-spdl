@@ -3,7 +3,8 @@
 data_dir=../data/
 
 python query_fasta.py --base-path $data_dir --protein RT > $data_dir/RT/refs/query.fasta 
-python query_fasta.py --base-path $data_dir --protein PR > $data_dir/PR/refs/query.fasta 
+#there are certain PDBs for which there is no RESSEQ in the PDB, we provide an override for these
+python query_fasta.py --base-path $data_dir --protein PR --overrides_fasta $data_dir/PR/refs/overrides.fasta > $data_dir/PR/refs/query.fasta 
 python query_fasta.py --base-path $data_dir --protein IN > $data_dir/IN/refs/query.fasta 
 
 python pdb_fasta.py --base-path $data_dir --protein RT > $data_dir/RT/refs/pdb.fasta 
