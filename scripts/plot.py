@@ -7,6 +7,8 @@ import seaborn as sns
 from matplotlib.legend_handler import HandlerBase
 from matplotlib.patches import Patch
 
+from utils import linear_regression_fit
+
 SECONDARY_STRUCTURES = {
     "PR": [(13, 19, 'sheet'), (25, 28, 'helix'), (45, 55, 'sheet'), (59, 64, 'sheet'),
            (67, 72, 'sheet'), (76, 81, 'sheet'), (84, 90, 'sheet'), (95, 99, 'helix')],
@@ -40,6 +42,18 @@ SECONDARY_STRUCTURES = {
 # Pastel colors for secondary-structure background regions.
 HELIX_BG_COLOR = "#cfe8ff"  # pastel light blue
 SHEET_BG_COLOR = "#ffd6d6"  # pastel light red
+
+# The four algorithms shown in the 2×2 pLDDT-vs-RMSD correlation grid.
+CORRELATION_ALGORITHMS = ["AlphaFold2", "AlphaFold3", "ESMFold", "Ember3D"]
+
+
+# Per-algorithm scatter colors for the 2×2 correlation grid.
+CORRELATION_COLORS = {
+    "AlphaFold2": "#1f77b4",   # muted blue
+    "AlphaFold3": "#ff7f0e",   # orange
+    "ESMFold":    "#2ca02c",   # green
+    "Ember3D":    "#9467bd",   # purple
+}
 
 
 class _SubtitleHandler(HandlerBase):
@@ -135,14 +149,40 @@ def plot_plddt(df, protein: str, plot_sec_struct: bool = True, figsize: tuple = 
     if plot_sec_struct:
         _plot_secondary_structure_background(ax, protein)
 
-    # ESM3 exports pLDDT on a 0-1 scale; convert to 0-100 for plotting parity.
-    df = df.copy()
-    esm_mask = df["Algorithm"].isin(["ESM3-Open", "ESM3-Large"])
-    df.loc[esm_mask, "pLDDT"] = df.loc[esm_mask, "pLDDT"] * 100
+    # Exclude ESM3-Open and ESM3-Large from the positional pLDDT plot.
+    df = df[~df["Algorithm"].isin(["ESM3-Open", "ESM3-Large"])].copy()
 
     sns.lineplot(data=df, x="pos", y="pLDDT", hue="Algorithm")
     _build_positional_legend(ax, with_sec_struct=plot_sec_struct)
     _format_pos_ax(ax, "pLDDT")
+    fig.tight_layout()
+
+
+def plot_correlation(df_rmsd: pd.DataFrame, df_plddt: pd.DataFrame, figsize: tuple = (12, 10)):
+    # Merge on shared keys.
+    df = pd.merge(df_rmsd, df_plddt, on=["pos", "Algorithm", "ref"], how="inner")
+
+    fig, axes = plt.subplots(2, 2, figsize=figsize, sharex=True, sharey=True)
+
+    for ax, algo in zip(axes.flatten(), CORRELATION_ALGORITHMS):
+        sub = df[df["Algorithm"] == algo]
+        color = CORRELATION_COLORS.get(algo, "#888888")
+        ax.scatter(sub["pLDDT"], sub["RMSD"],
+                   alpha=0.3, s=10, edgecolors="none", color=color)
+
+        # Linear regression fit line.
+        if len(sub) > 1:
+            fit = linear_regression_fit(sub["pLDDT"].values, sub["RMSD"].values)
+            if fit is not None:
+                x_line, y_line, _ = fit
+                ax.plot(x_line, y_line, color="red", linewidth=1.5, label="Linear fit")
+
+        ax.set_title(algo, fontsize=14, fontweight="bold")
+        ax.set_xlabel("pLDDT", fontsize=12)
+        ax.set_ylabel("RMSD", fontsize=12)
+        ax.tick_params(axis="both", labelsize=11)
+        ax.grid(True, linestyle="--", alpha=0.4)
+
     fig.tight_layout()
 
 
@@ -161,10 +201,16 @@ def plot_tm(df):
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--csv_path", type=Path, help="Path to the CSV file", required=True)
-    parser.add_argument("--type", choices=["rmsd", "plddt", "grmsd", "tm"], required=True,
+    parser.add_argument("--csv_path2", type=Path, default=None,
+                        help="Second CSV path (pLDDT CSV for --type correlation)")
+    parser.add_argument("--type",
+                        choices=["rmsd", "plddt", "grmsd", "tm", "correlation"],
+                        required=True,
                         help="Type of plot to generate")
     parser.add_argument("--protein", choices=["PR", "IN", "RT"], required=True,
                         help="Protein for secondary-structure overlays in line plots")
+    parser.add_argument("--output", type=Path, default=None,
+                        help="Output filename (default: <csv_stem>.png)")
     args = parser.parse_args()
 
     df = pd.read_csv(args.csv_path)
@@ -176,8 +222,14 @@ def main():
         plot_grmsd(df)
     elif args.type == "tm":
         plot_tm(df)
+    elif args.type == "correlation":
+        if args.csv_path2 is None:
+            parser.error("--csv_path2 (pLDDT CSV) is required for --type correlation")
+        df_plddt = pd.read_csv(args.csv_path2)
+        plot_correlation(df, df_plddt)
 
-    plt.savefig(args.csv_path.stem + ".png", format="png", dpi=500, bbox_inches="tight")
+    out = args.output if args.output else (args.csv_path.stem + ".png")
+    plt.savefig(out, format="png", dpi=500, bbox_inches="tight")
 
 
 if __name__ == "__main__":

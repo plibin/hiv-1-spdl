@@ -1,3 +1,38 @@
+from typing import Optional, Tuple
+
+import numpy as np
+
+
+def linear_regression_fit(
+    x: np.ndarray, y: np.ndarray, n_points: int = 200
+) -> Optional[Tuple[np.ndarray, np.ndarray, np.ndarray]]:
+    """Compute a simple linear regression fit over finite values.
+
+    Parameters
+    ----------
+    x, y : array-like
+        Observed data.  Non-finite entries (NaN / Inf) are silently dropped.
+    n_points : int
+        Number of evenly spaced points for the fitted line.
+
+    Returns
+    -------
+    (x_line, y_line, coeffs) or ``None``
+        *x_line* and *y_line* are the coordinates of the fit line, *coeffs*
+        is ``[slope, intercept]``.  Returns ``None`` when fewer than two
+        finite observations remain.
+    """
+    x = np.asarray(x, dtype=float)
+    y = np.asarray(y, dtype=float)
+    mask = np.isfinite(x) & np.isfinite(y)
+    if mask.sum() < 2:
+        return None
+    coeffs = np.polyfit(x[mask], y[mask], 1)
+    x_line = np.linspace(x[mask].min(), x[mask].max(), n_points)
+    y_line = np.polyval(coeffs, x_line)
+    return x_line, y_line, coeffs
+
+
 def count_overlapping(seq, motif):
     m = len(motif)
     count = 0

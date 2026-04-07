@@ -6,6 +6,7 @@
 #   ./plot.sh pos plddt
 #   ./plot.sh global rmsd
 #   ./plot.sh global tm
+#   ./plot.sh correlation
 
 set -u
 
@@ -22,6 +23,41 @@ figs_dir="$results_dir/figures"
 mkdir -p "$figs_dir" "$logs_dir"
 
 proteins=("PR" "IN" "RT")
+
+# --- correlation scope (no stat arg needed) ---
+if [ "$scope" = "correlation" ]; then
+  echo "Plotting correlation (pLDDT vs RMSD) ..."
+  for protein in "${proteins[@]}"; do
+    protein_lower=$(echo "$protein" | tr '[:upper:]' '[:lower:]')
+    rmsd_csv="$results_dir/${protein_lower}-pos-rmsd.csv"
+    plddt_csv="$results_dir/${protein_lower}-pos-plddt.csv"
+    plot_log="$logs_dir/${protein_lower}-correlation.plot.stderr.log"
+
+    if [ ! -f "$rmsd_csv" ] || [ ! -f "$plddt_csv" ]; then
+      echo "- $protein: missing CSV(s)"; continue
+    fi
+
+    (
+      cd "$figs_dir" || exit 1
+      python3 "$script_dir/plot.py" \
+        --csv_path "$rmsd_csv" \
+        --csv_path2 "$plddt_csv" \
+        --type correlation \
+        --protein "$protein" \
+        --output "${protein_lower}-correlation.png" \
+        2> "$plot_log"
+    )
+    exit_code=$?
+
+    if [ $exit_code -eq 0 ]; then
+      echo "- $protein: ok"
+    else
+      echo "- $protein: failed (see $plot_log)"
+    fi
+  done
+  echo "Done."
+  exit 0
+fi
 
 case "$scope" in
   pos)
