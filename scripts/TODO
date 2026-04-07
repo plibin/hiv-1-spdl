@@ -1,3 +1,4 @@
+update IN overrides.fasta, with the fasta I sent via mail to Francisco
 fasta.sh: WARNING: no SEQRES -> reverts to ATOM seq, I think it is the best we can do, I will report it in the paper
 mention that the IN alignment was cleaned
 is there p15 in the RT alignment -> clarify in the paper
