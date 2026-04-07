@@ -33,6 +33,59 @@ def linear_regression_fit(
     return x_line, y_line, coeffs
 
 
+def binned_mean_regression_fit(
+    x: np.ndarray, y: np.ndarray, n_bins: int = 4, n_points: int = 200
+) -> Optional[Tuple[np.ndarray, np.ndarray, np.ndarray]]:
+    """Linear regression through per-bin mean points.
+
+    The finite (x, y) observations are divided into *n_bins* equal-width bins
+    along *x*.  For each bin the mean x and mean y are computed, yielding
+    *n_bins* representative points.  A standard linear regression
+    (via :func:`linear_regression_fit`) is then fitted through those means.
+
+    Parameters
+    ----------
+    x, y : array-like
+        Observed data.  Non-finite entries are silently dropped.
+    n_bins : int
+        Number of equal-width bins along *x*.
+    n_points : int
+        Number of evenly spaced points for the returned fit line.
+
+    Returns
+    -------
+    (x_line, y_line, coeffs, mean_x, mean_y) or ``None``
+        First three elements follow the same contract as
+        :func:`linear_regression_fit`.  *mean_x* and *mean_y* are the
+        per-bin mean coordinates used for the fit.  Returns ``None``
+        when fewer than two non-empty bins remain.
+    """
+    x = np.asarray(x, dtype=float)
+    y = np.asarray(y, dtype=float)
+    mask = np.isfinite(x) & np.isfinite(y)
+    if mask.sum() < 2:
+        return None
+
+    xf, yf = x[mask], y[mask]
+    bin_edges = np.linspace(xf.min(), xf.max(), n_bins + 1)
+    bin_indices = np.digitize(xf, bin_edges, right=True)
+
+    mean_x, mean_y = [], []
+    for b in range(1, n_bins + 1):
+        sel = bin_indices == b
+        if sel.any():
+            mean_x.append(xf[sel].mean())
+            mean_y.append(yf[sel].mean())
+
+    mean_x = np.array(mean_x)
+    mean_y = np.array(mean_y)
+    fit = linear_regression_fit(mean_x, mean_y, n_points)
+    if fit is None:
+        return None
+    x_line, y_line, coeffs = fit
+    return x_line, y_line, coeffs, mean_x, mean_y
+
+
 def count_overlapping(seq, motif):
     m = len(motif)
     count = 0

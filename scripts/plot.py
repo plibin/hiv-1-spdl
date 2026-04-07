@@ -6,8 +6,9 @@ import pandas as pd
 import seaborn as sns
 from matplotlib.legend_handler import HandlerBase
 from matplotlib.patches import Patch
+from matplotlib.lines import Line2D
 
-from utils import linear_regression_fit
+from utils import linear_regression_fit, binned_mean_regression_fit
 
 SECONDARY_STRUCTURES = {
     "PR": [(13, 19, 'sheet'), (25, 28, 'helix'), (45, 55, 'sheet'), (59, 64, 'sheet'),
@@ -162,20 +163,26 @@ def plot_correlation(df_rmsd: pd.DataFrame, df_plddt: pd.DataFrame, figsize: tup
     # Merge on shared keys.
     df = pd.merge(df_rmsd, df_plddt, on=["pos", "Algorithm", "ref"], how="inner")
 
-    fig, axes = plt.subplots(2, 2, figsize=figsize, sharex=True, sharey=True)
+    fig, axes = plt.subplots(2, 2, figsize=figsize)
 
     for ax, algo in zip(axes.flatten(), CORRELATION_ALGORITHMS):
         sub = df[df["Algorithm"] == algo]
         color = CORRELATION_COLORS.get(algo, "#888888")
-        ax.scatter(sub["pLDDT"], sub["RMSD"],
-                   alpha=0.3, s=10, edgecolors="none", color=color)
+        ax.scatter(sub["pLDDT"], sub["RMSD"], alpha=0.3, s=10, edgecolors="none", color=color)
 
         # Linear regression fit line.
         if len(sub) > 1:
             fit = linear_regression_fit(sub["pLDDT"].values, sub["RMSD"].values)
             if fit is not None:
                 x_line, y_line, _ = fit
-                ax.plot(x_line, y_line, color="red", linewidth=1.5, label="Linear fit")
+                ax.plot(x_line, y_line, color="red", linewidth=1.5)
+
+            # Binned-mean regression: 4 equal-width pLDDT bins → mean points → fit.
+            binned_fit = binned_mean_regression_fit(sub["pLDDT"].values, sub["RMSD"].values, n_bins=4)
+            if binned_fit is not None:
+                x_bin, y_bin, _, mean_x, mean_y = binned_fit
+                ax.plot(x_bin, y_bin, color="black", linewidth=1.5, linestyle="--")
+                ax.scatter(mean_x, mean_y, color="black", s=40, zorder=5)
 
         ax.set_title(algo, fontsize=14, fontweight="bold")
         ax.set_xlabel("pLDDT", fontsize=12)
@@ -183,7 +190,16 @@ def plot_correlation(df_rmsd: pd.DataFrame, df_plddt: pd.DataFrame, figsize: tup
         ax.tick_params(axis="both", labelsize=11)
         ax.grid(True, linestyle="--", alpha=0.4)
 
-    fig.tight_layout()
+    # Shared legend centred below the bottom row of subplots.
+    legend_handles = [
+        Line2D([], [], color="red", linewidth=1.5, label="Linear fit"),
+        Line2D([], [], color="black", linewidth=1.5, linestyle="--", label="Binned-mean fit"),
+        Line2D([], [], marker="o", color="black", linewidth=0, markersize=6, label="Bin means"),
+    ]
+    fig.legend(handles=legend_handles, loc="lower center", ncol=3,
+               fontsize=12, frameon=True, bbox_to_anchor=(0.5, -0.02))
+
+    fig.tight_layout(rect=[0, 0.04, 1, 1])
 
 
 def plot_grmsd(df):
