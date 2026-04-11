@@ -1,3 +1,5 @@
+Lennert: kijk je R^2 en r_w code ff na aub?
+
 update IN overrides.fasta, with the fasta I sent via mail to Francisco
 fasta.sh: WARNING: no SEQRES -> reverts to ATOM seq, I think it is the best we can do, I will report it in the paper
 mention that the IN alignment was cleaned
