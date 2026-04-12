@@ -14,9 +14,7 @@ records = list(SeqIO.parse(args.fasta, "fasta"))
 for rec in records:
     if rec.id == args.seqname:
         seq = str(rec.seq)
-        print(seq)
         rec.seq = Seq(seq[:args.pos - 1] + "-" + seq[args.pos:])
-        print(rec.seq)
         break
 else:
     raise ValueError(f"Sequence {args.seqname} not found")
