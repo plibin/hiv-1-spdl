@@ -9,7 +9,7 @@ from matplotlib.legend_handler import HandlerBase
 from matplotlib.patches import Patch
 from matplotlib.lines import Line2D
 
-from utils import linear_regression_fit, binned_mean_regression_fit, weighted_binned_correlation
+from utils import linear_regression_fit, binned_mean_regression_fit, weighted_binned_correlation, bin_means
 
 SECONDARY_STRUCTURES = {
     "PR": [(13, 19, 'sheet'), (25, 28, 'helix'), (45, 55, 'sheet'), (59, 64, 'sheet'),
@@ -183,7 +183,13 @@ def plot_correlation(df_rmsd: pd.DataFrame, df_plddt: pd.DataFrame, figsize: tup
             if binned_fit is not None:
                 x_bin, y_bin, _, mean_x, mean_y = binned_fit
                 ax.plot(x_bin, y_bin, color="black", linewidth=1.5, linestyle="--")
-                ax.scatter(mean_x, mean_y, color="black", s=40, zorder=5)
+
+                bm = bin_means(sub["pLDDT"].values, sub["RMSD"].values, n_bins=4)
+                if bm is not None:
+                    _, _, _, std_x, std_y = bm
+                    ax.errorbar(mean_x, mean_y, xerr=std_x, yerr=std_y,
+                                fmt="o", color="black", markersize=6, zorder=5,
+                                capsize=3, capthick=1, elinewidth=1)
 
             r = np.corrcoef(sub["pLDDT"].values, sub["RMSD"].values)[0, 1]
             r2 = r ** 2 if np.isfinite(r) else np.nan
@@ -197,16 +203,21 @@ def plot_correlation(df_rmsd: pd.DataFrame, df_plddt: pd.DataFrame, figsize: tup
             )
 
         ax.set_title(algo, fontsize=14, fontweight="bold")
-        ax.set_xlabel("pLDDT", fontsize=12)
-        ax.set_ylabel("RMSD", fontsize=12)
         ax.tick_params(axis="both", labelsize=11)
         ax.grid(True, linestyle="--", alpha=0.4)
+
+    for row in range(2):
+        for col in range(2):
+            if row == 1:
+                axes[row, col].set_xlabel("pLDDT", fontsize=12)
+            if col == 0:
+                axes[row, col].set_ylabel("RMSD", fontsize=12)
 
     # Shared legend centred below the bottom row of subplots.
     legend_handles = [
         Line2D([], [], color="red", linewidth=1.5, label="Linear fit"),
         Line2D([], [], color="black", linewidth=1.5, linestyle="--", label="Binned-mean fit"),
-        Line2D([], [], marker="o", color="black", linewidth=0, markersize=6, label="Bin means"),
+        Line2D([], [], marker="o", color="black", linewidth=0, markersize=6, label="Bin means (±1 SD)"),
     ]
     fig.legend(handles=legend_handles, loc="lower center", ncol=3,
                fontsize=12, frameon=True, bbox_to_anchor=(0.5, -0.02))

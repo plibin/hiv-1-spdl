@@ -35,12 +35,12 @@ def linear_regression_fit(
 
 def bin_means(
     x, y, n_bins: int = 4
-) -> Optional[Tuple[np.ndarray, np.ndarray, np.ndarray]]:
-    """Compute per-bin means over equal-width bins along *x*.
+) -> Optional[Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray]]:
+    """Compute per-bin means and standard deviations over equal-width bins along *x*.
 
     Finite (x, y) pairs are divided into *n_bins* equal-width bins spanning
-    ``[x.min(), x.max()]``.  For each non-empty bin the mean x, mean y, and
-    observation count are returned.
+    ``[x.min(), x.max()]``.  For each non-empty bin the mean x, mean y,
+    observation count, std x, and std y are returned.
 
     Parameters
     ----------
@@ -51,9 +51,11 @@ def bin_means(
 
     Returns
     -------
-    (mean_x, mean_y, weights) or ``None``
+    (mean_x, mean_y, weights, std_x, std_y) or ``None``
         Arrays of length equal to the number of non-empty bins.
         *weights* contains the count of observations per bin.
+        *std_x* and *std_y* contain the sample standard deviation per bin
+        (0.0 for bins with a single observation).
         Returns ``None`` when fewer than two non-empty bins exist.
     """
     x = np.asarray(x, dtype=float)
@@ -66,18 +68,21 @@ def bin_means(
     bin_edges = np.linspace(xf.min(), xf.max(), n_bins + 1)
     bin_indices = np.digitize(xf, bin_edges, right=True)
 
-    mean_x, mean_y, weights = [], [], []
+    mean_x, mean_y, weights, std_x, std_y = [], [], [], [], []
     for b in range(1, n_bins + 1):
         sel = bin_indices == b
         if sel.any():
             mean_x.append(xf[sel].mean())
             mean_y.append(yf[sel].mean())
             weights.append(sel.sum())
+            std_x.append(xf[sel].std())
+            std_y.append(yf[sel].std())
 
     if len(mean_x) < 2:
         return None
 
-    return np.asarray(mean_x), np.asarray(mean_y), np.asarray(weights, dtype=float)
+    return (np.asarray(mean_x), np.asarray(mean_y), np.asarray(weights, dtype=float),
+            np.asarray(std_x), np.asarray(std_y))
 
 
 def binned_mean_regression_fit(
@@ -110,7 +115,7 @@ def binned_mean_regression_fit(
     result = bin_means(x, y, n_bins)
     if result is None:
         return None
-    mean_x, mean_y, _ = result
+    mean_x, mean_y, _, _, _ = result
     fit = linear_regression_fit(mean_x, mean_y, n_points)
     if fit is None:
         return None
@@ -131,7 +136,7 @@ def weighted_binned_correlation(x, y, n_bins: int = 4):
     result = bin_means(x, y, n_bins)
     if result is None:
         return np.nan
-    mean_x, mean_y, weights = result
+    mean_x, mean_y, weights, _, _ = result
 
     mx = np.average(mean_x, weights=weights)
     my = np.average(mean_y, weights=weights)
