@@ -9,43 +9,7 @@ from matplotlib.legend_handler import HandlerBase
 from matplotlib.patches import Patch
 from matplotlib.lines import Line2D
 
-from utils import linear_regression_fit, binned_mean_regression_fit
-
-
-def _weighted_binned_correlation(x, y, n_bins: int = 4):
-    x = np.asarray(x, dtype=float)
-    y = np.asarray(y, dtype=float)
-    mask = np.isfinite(x) & np.isfinite(y)
-    if mask.sum() < 2:
-        return np.nan
-
-    xf, yf = x[mask], y[mask]
-    bin_edges = np.linspace(xf.min(), xf.max(), n_bins + 1)
-    bin_indices = np.digitize(xf, bin_edges, right=True)
-
-    mean_x, mean_y, weights = [], [], []
-    for b in range(1, n_bins + 1):
-        sel = bin_indices == b
-        if sel.any():
-            mean_x.append(xf[sel].mean())
-            mean_y.append(yf[sel].mean())
-            weights.append(sel.sum())
-
-    if len(mean_x) < 2:
-        return np.nan
-
-    mean_x = np.asarray(mean_x)
-    mean_y = np.asarray(mean_y)
-    weights = np.asarray(weights, dtype=float)
-
-    mx = np.average(mean_x, weights=weights)
-    my = np.average(mean_y, weights=weights)
-    cov = np.average((mean_x - mx) * (mean_y - my), weights=weights)
-    vx = np.average((mean_x - mx) ** 2, weights=weights)
-    vy = np.average((mean_y - my) ** 2, weights=weights)
-    if vx <= 0 or vy <= 0:
-        return np.nan
-    return cov / np.sqrt(vx * vy)
+from utils import linear_regression_fit, binned_mean_regression_fit, weighted_binned_correlation
 
 SECONDARY_STRUCTURES = {
     "PR": [(13, 19, 'sheet'), (25, 28, 'helix'), (45, 55, 'sheet'), (59, 64, 'sheet'),
@@ -223,7 +187,7 @@ def plot_correlation(df_rmsd: pd.DataFrame, df_plddt: pd.DataFrame, figsize: tup
 
             r = np.corrcoef(sub["pLDDT"].values, sub["RMSD"].values)[0, 1]
             r2 = r ** 2 if np.isfinite(r) else np.nan
-            rw = _weighted_binned_correlation(sub["pLDDT"].values, sub["RMSD"].values, n_bins=4)
+            rw = weighted_binned_correlation(sub["pLDDT"].values, sub["RMSD"].values, n_bins=4)
             ax.text(
                 0.03, 0.97,
                 f"$R^2$ = {r2:.3f}\n$r_w$ = {rw:.3f}",

@@ -33,9 +33,56 @@ def linear_regression_fit(
     return x_line, y_line, coeffs
 
 
+def bin_means(
+    x, y, n_bins: int = 4
+) -> Optional[Tuple[np.ndarray, np.ndarray, np.ndarray]]:
+    """Compute per-bin means over equal-width bins along *x*.
+
+    Finite (x, y) pairs are divided into *n_bins* equal-width bins spanning
+    ``[x.min(), x.max()]``.  For each non-empty bin the mean x, mean y, and
+    observation count are returned.
+
+    Parameters
+    ----------
+    x, y : array-like
+        Observed data.  Non-finite entries are silently dropped.
+    n_bins : int
+        Number of equal-width bins along *x*.
+
+    Returns
+    -------
+    (mean_x, mean_y, weights) or ``None``
+        Arrays of length equal to the number of non-empty bins.
+        *weights* contains the count of observations per bin.
+        Returns ``None`` when fewer than two non-empty bins exist.
+    """
+    x = np.asarray(x, dtype=float)
+    y = np.asarray(y, dtype=float)
+    mask = np.isfinite(x) & np.isfinite(y)
+    if mask.sum() < 2:
+        return None
+
+    xf, yf = x[mask], y[mask]
+    bin_edges = np.linspace(xf.min(), xf.max(), n_bins + 1)
+    bin_indices = np.digitize(xf, bin_edges, right=True)
+
+    mean_x, mean_y, weights = [], [], []
+    for b in range(1, n_bins + 1):
+        sel = bin_indices == b
+        if sel.any():
+            mean_x.append(xf[sel].mean())
+            mean_y.append(yf[sel].mean())
+            weights.append(sel.sum())
+
+    if len(mean_x) < 2:
+        return None
+
+    return np.asarray(mean_x), np.asarray(mean_y), np.asarray(weights, dtype=float)
+
+
 def binned_mean_regression_fit(
     x: np.ndarray, y: np.ndarray, n_bins: int = 4, n_points: int = 200
-) -> Optional[Tuple[np.ndarray, np.ndarray, np.ndarray]]:
+) -> Optional[Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray]]:
     """Linear regression through per-bin mean points.
 
     The finite (x, y) observations are divided into *n_bins* equal-width bins
@@ -60,30 +107,40 @@ def binned_mean_regression_fit(
         per-bin mean coordinates used for the fit.  Returns ``None``
         when fewer than two non-empty bins remain.
     """
-    x = np.asarray(x, dtype=float)
-    y = np.asarray(y, dtype=float)
-    mask = np.isfinite(x) & np.isfinite(y)
-    if mask.sum() < 2:
+    result = bin_means(x, y, n_bins)
+    if result is None:
         return None
-
-    xf, yf = x[mask], y[mask]
-    bin_edges = np.linspace(xf.min(), xf.max(), n_bins + 1)
-    bin_indices = np.digitize(xf, bin_edges, right=True)
-
-    mean_x, mean_y = [], []
-    for b in range(1, n_bins + 1):
-        sel = bin_indices == b
-        if sel.any():
-            mean_x.append(xf[sel].mean())
-            mean_y.append(yf[sel].mean())
-
-    mean_x = np.array(mean_x)
-    mean_y = np.array(mean_y)
+    mean_x, mean_y, _ = result
     fit = linear_regression_fit(mean_x, mean_y, n_points)
     if fit is None:
         return None
     x_line, y_line, coeffs = fit
     return x_line, y_line, coeffs, mean_x, mean_y
+
+
+def weighted_binned_correlation(x, y, n_bins: int = 4):
+    """Weighted Pearson correlation over per-bin means.
+
+    Observations are binned into *n_bins* equal-width bins along *x*
+    (via :func:`bin_means`).  A weighted Pearson *r* is then computed
+    over the bin means, using the bin counts as weights.
+
+    Returns ``NaN`` when fewer than two non-empty bins exist or when
+    either dimension has zero variance across bins.
+    """
+    result = bin_means(x, y, n_bins)
+    if result is None:
+        return np.nan
+    mean_x, mean_y, weights = result
+
+    mx = np.average(mean_x, weights=weights)
+    my = np.average(mean_y, weights=weights)
+    cov = np.average((mean_x - mx) * (mean_y - my), weights=weights)
+    vx = np.average((mean_x - mx) ** 2, weights=weights)
+    vy = np.average((mean_y - my) ** 2, weights=weights)
+    if vx <= 0 or vy <= 0:
+        return np.nan
+    return cov / np.sqrt(vx * vy)
 
 
 def count_overlapping(seq, motif):
