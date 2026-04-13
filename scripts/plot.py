@@ -45,17 +45,18 @@ SECONDARY_STRUCTURES = {
 HELIX_BG_COLOR = "#cfe8ff"  # pastel light blue
 SHEET_BG_COLOR = "#ffd6d6"  # pastel light red
 
-# The four algorithms shown in the 2×2 pLDDT-vs-RMSD correlation grid.
-CORRELATION_ALGORITHMS = ["AlphaFold2", "AlphaFold3", "ESMFold", "Ember3D"]
-
-
-# Per-algorithm scatter colors for the 2×2 correlation grid.
-CORRELATION_COLORS = {
+# Canonical per-algorithm colours shared across every figure type.
+ALGORITHM_COLORS = {
     "AlphaFold2": "#1f77b4",   # muted blue
     "AlphaFold3": "#ff7f0e",   # orange
     "ESMFold":    "#2ca02c",   # green
+    "ESM3-Open":  "#d62728",   # red
+    "ESM3-Large": "#e377c2",   # pink
     "Ember3D":    "#9467bd",   # purple
 }
+
+# The four algorithms shown in the 2×2 pLDDT-vs-RMSD correlation grid.
+CORRELATION_ALGORITHMS = ["AlphaFold2", "AlphaFold3", "ESMFold", "Ember3D"]
 
 
 class _SubtitleHandler(HandlerBase):
@@ -140,7 +141,7 @@ def plot_rmsd(df, protein: str, plot_sec_struct: bool = True, figsize: tuple = (
     fig, ax = plt.subplots(figsize=figsize)
     if plot_sec_struct:
         _plot_secondary_structure_background(ax, protein)
-    sns.lineplot(data=df, x="pos", y="RMSD", hue="Algorithm")
+    sns.lineplot(data=df, x="pos", y="RMSD", hue="Algorithm", palette=ALGORITHM_COLORS)
     _build_positional_legend(ax, with_sec_struct=plot_sec_struct)
     _format_pos_ax(ax, "RMSD")
     fig.tight_layout()
@@ -154,7 +155,7 @@ def plot_plddt(df, protein: str, plot_sec_struct: bool = True, figsize: tuple = 
     # Exclude ESM3-Open and ESM3-Large from the positional pLDDT plot.
     df = df[~df["Algorithm"].isin(["ESM3-Open", "ESM3-Large"])].copy()
 
-    sns.lineplot(data=df, x="pos", y="pLDDT", hue="Algorithm")
+    sns.lineplot(data=df, x="pos", y="pLDDT", hue="Algorithm", palette=ALGORITHM_COLORS)
     _build_positional_legend(ax, with_sec_struct=plot_sec_struct)
     _format_pos_ax(ax, "pLDDT")
     fig.tight_layout()
@@ -168,7 +169,7 @@ def plot_correlation(df_rmsd: pd.DataFrame, df_plddt: pd.DataFrame, figsize: tup
 
     for ax, algo in zip(axes.flatten(), CORRELATION_ALGORITHMS):
         sub = df[df["Algorithm"] == algo]
-        color = CORRELATION_COLORS.get(algo, "#888888")
+        color = ALGORITHM_COLORS.get(algo, "#888888")
         ax.scatter(sub["pLDDT"], sub["RMSD"], alpha=0.3, s=10, edgecolors="none", color=color)
 
         # Linear regression fit line.
@@ -227,13 +228,17 @@ def plot_correlation(df_rmsd: pd.DataFrame, df_plddt: pd.DataFrame, figsize: tup
 
 def plot_grmsd(df):
     fig, ax = plt.subplots()
-    sns.boxplot(data=df, x="Algorithm", y="RMSD", ax=ax)
+    order = [a for a in ALGORITHM_COLORS if a in df["Algorithm"].unique()]
+    palette = {a: ALGORITHM_COLORS[a] for a in order}
+    sns.boxplot(data=df, x="Algorithm", y="RMSD", ax=ax, order=order, palette=palette)
     ax.tick_params(axis="x", rotation=25)
 
 
 def plot_tm(df):
     fig, ax = plt.subplots()
-    sns.boxplot(data=df, x="Algorithm", y="TM", ax=ax)
+    order = [a for a in ALGORITHM_COLORS if a in df["Algorithm"].unique()]
+    palette = {a: ALGORITHM_COLORS[a] for a in order}
+    sns.boxplot(data=df, x="Algorithm", y="TM", ax=ax, order=order, palette=palette)
     ax.tick_params(axis="x", rotation=25)
 
 
