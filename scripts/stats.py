@@ -15,18 +15,48 @@ VALUE_COLUMNS = {
     "tm": "TM",
 }
 
+# Positional types contain per-residue rows that must be aggregated before
+# running group-level statistics (see _aggregate_positional).
+_POSITIONAL_TYPES = {"rmsd", "plddt"}
+
 ALPHA = 0.05
 _SHAPIRO_MAX_N = 5000
 
-def prepare_data(df: pd.DataFrame, value_col: str) -> pd.DataFrame:
+
+def _aggregate_positional(df: pd.DataFrame, value_col: str) -> pd.DataFrame:
+    """Collapse per-residue rows to one observation per (Algorithm, ref).
+
+    Positional CSVs contain one row per residue per prediction.  Residues
+    within a single prediction are spatially correlated (nearby residues
+    tend to share similar RMSD / pLDDT values), violating the independence
+    assumption required by ANOVA and Kruskal-Wallis.
+
+    Averaging across residues within each reference prediction yields one
+    independent observation per protein, matching the granularity of the
+    global metrics and restoring validity of the downstream statistical
+    tests.
+    """
+    return df.groupby(["Algorithm", "ref"], as_index=False)[value_col].mean()
+
+
+def prepare_data(df: pd.DataFrame, value_col: str, metric_type: str) -> pd.DataFrame:
     cols = ["Algorithm", value_col]
     missing = [c for c in cols if c not in df.columns]
     if missing:
         raise ValueError(f"Missing columns: {missing}. Available: {list(df.columns)}")
 
-    out = df[cols].copy()
+    out = df[["Algorithm", value_col] + (["ref"] if "ref" in df.columns else [])].copy()
     out[value_col] = pd.to_numeric(out[value_col], errors="coerce")
-    return out.dropna(subset=cols)
+    out = out.dropna(subset=cols)
+
+    if metric_type in _POSITIONAL_TYPES:
+        if "ref" not in out.columns:
+            raise ValueError(
+                f"Positional type '{metric_type}' requires a 'ref' column for per-prediction aggregation, but none was found."
+            )
+        out = _aggregate_positional(out, value_col)
+
+    return out[cols]
 
 
 def mean_table(df: pd.DataFrame, value_col: str) -> pd.DataFrame:
@@ -237,7 +267,7 @@ def main() -> None:
 
     df = pd.read_csv(args.csv_path)
     value_col = VALUE_COLUMNS[args.type]
-    df = prepare_data(df, value_col)
+    df = prepare_data(df, value_col, metric_type=args.type)
 
     output_prefix = args.output_prefix or args.csv_path.with_suffix("")
     save_tables(df, value_col, output_prefix)
