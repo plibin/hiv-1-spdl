@@ -226,20 +226,17 @@ def plot_correlation(df_rmsd: pd.DataFrame, df_plddt: pd.DataFrame, figsize: tup
     fig.tight_layout(rect=[0, 0.04, 1, 1])
 
 
-def plot_grmsd(df):
+def plot_global_boxplot(df, value_col: str, ytick_interval: float | None = None):
     fig, ax = plt.subplots()
     order = [a for a in ALGORITHM_COLORS if a in df["Algorithm"].unique()]
     palette = {a: ALGORITHM_COLORS[a] for a in order}
-    sns.boxplot(data=df, x="Algorithm", y="RMSD", ax=ax, order=order, palette=palette)
+    sns.boxplot(data=df, x="Algorithm", y=value_col, ax=ax, order=order, palette=palette)
     ax.tick_params(axis="x", rotation=25)
-
-
-def plot_tm(df):
-    fig, ax = plt.subplots()
-    order = [a for a in ALGORITHM_COLORS if a in df["Algorithm"].unique()]
-    palette = {a: ALGORITHM_COLORS[a] for a in order}
-    sns.boxplot(data=df, x="Algorithm", y="TM", ax=ax, order=order, palette=palette)
-    ax.tick_params(axis="x", rotation=25)
+    ax.grid(True, linestyle="--", alpha=0.4)
+    if ytick_interval is not None:
+        lo, hi = ax.get_ylim()
+        ax.set_yticks(np.arange(np.floor(lo / ytick_interval) * ytick_interval,
+                                hi + ytick_interval, ytick_interval))
 
 
 def main():
@@ -255,6 +252,8 @@ def main():
                         help="Protein for secondary-structure overlays in line plots")
     parser.add_argument("--output", type=Path, default=None,
                         help="Output filename (default: <csv_stem>.png)")
+    parser.add_argument("--ytick_interval", type=float, default=None,
+                        help="Y-axis tick interval for global boxplots")
     args = parser.parse_args()
 
     df = pd.read_csv(args.csv_path)
@@ -263,9 +262,9 @@ def main():
     elif args.type == "plddt":
         plot_plddt(df, plot_sec_struct=True, protein=args.protein)
     elif args.type == "grmsd":
-        plot_grmsd(df)
+        plot_global_boxplot(df, "RMSD", ytick_interval=args.ytick_interval)
     elif args.type == "tm":
-        plot_tm(df)
+        plot_global_boxplot(df, "TM", ytick_interval=args.ytick_interval)
     elif args.type == "correlation":
         if args.csv_path2 is None:
             parser.error("--csv_path2 (pLDDT CSV) is required for --type correlation")

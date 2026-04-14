@@ -109,10 +109,17 @@ for protein in "${proteins[@]}"; do
 
   (
     cd "$figs_dir" || exit 1
+
+    extra_args=()
+    if [ "$plot_type" = "grmsd" ] && [ "$protein" = "RT" ]; then
+      extra_args+=(--ytick_interval 2.5)
+    fi
+
     python3 "$script_dir/plot.py" \
       --csv_path "$csv_file" \
       --type "$plot_type" \
       --protein "$protein" \
+      "${extra_args[@]+"${extra_args[@]}"}" \
       2> "$plot_log"
   )
   exit_code=$?
