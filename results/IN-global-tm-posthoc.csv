@@ -1,0 +1,16 @@
+test,group1,group2,meandiff,p-adj,reject
+Dunn,AlphaFold2,AlphaFold3,-0.0005,1.0,False
+Dunn,AlphaFold2,ESM3-Large,-0.0005,1.0,False
+Dunn,AlphaFold2,ESM3-Open,-0.1351,4.293372733956435e-06,True
+Dunn,AlphaFold2,ESMFold,-0.0053,1.0,False
+Dunn,AlphaFold2,Ember3D,-0.6468,1.729251477743749e-12,True
+Dunn,AlphaFold3,ESM3-Large,0.0001,1.0,False
+Dunn,AlphaFold3,ESM3-Open,-0.1345,0.0008767258014203855,True
+Dunn,AlphaFold3,ESMFold,-0.0047,1.0,False
+Dunn,AlphaFold3,Ember3D,-0.6463,9.426839657595235e-08,True
+Dunn,ESM3-Large,ESM3-Open,-0.1346,3.362353816093823e-05,True
+Dunn,ESM3-Large,ESMFold,-0.0048,1.0,False
+Dunn,ESM3-Large,Ember3D,-0.6464,3.3250905442554004e-11,True
+Dunn,ESM3-Open,ESMFold,0.1298,0.00024442482008279944,True
+Dunn,ESM3-Open,Ember3D,-0.5118,0.3304982348199503,False
+Dunn,ESMFold,Ember3D,-0.6415,6.158726001866461e-10,True

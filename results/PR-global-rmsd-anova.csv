@@ -1,0 +1,2 @@
+test,statistic,p_value,effect_size,normality,equal_variance
+Kruskal-Wallis,537.7573313279618,5.6311625708243594e-114,0.8247017512816746,False,False
