@@ -9,11 +9,32 @@ def _rmsd_between_residues(r_ref: Residue.Residue, r_pred: Residue.Residue):
     return float(np.sqrt(np.mean(squared_diffs)))
 
 
+def _sidechain_heavy_atom_rmsd_between_residues(
+        r_ref: Residue.Residue,
+        r_pred: Residue.Residue,
+) -> float:
+    squared_diffs = core.squared_diffs_between_sidechain_heavy_atoms(r_ref, r_pred)
+
+    # Some residues have no comparable side-chain heavy atoms; represent these
+    # positions as missing values in the positional side-chain RMSD output.
+    if not squared_diffs:
+        return float("nan")
+
+    return float(np.sqrt(np.mean(squared_diffs)))
+
+
 # Return a dict with the positions and corresponding RMSDs
 def per_residue_rmsd(id_: str,
                      ref_align, pred_align,
                      ref_chain: Chain.Chain, pred_chain: Chain.Chain) -> dict[int, float]:
     return core.stat_per_residue(id_, ref_align, pred_align, ref_chain, pred_chain, _rmsd_between_residues)
+
+
+def per_residue_sidechain_rmsd(id_: str,
+                               ref_align, pred_align,
+                               ref_chain: Chain.Chain, pred_chain: Chain.Chain) -> dict[int, float]:
+    return core.stat_per_residue(id_, ref_align, pred_align, ref_chain, pred_chain,
+                                 _sidechain_heavy_atom_rmsd_between_residues)
 
 
 # Note: This computes the RMSD of all common atoms after superposition on CA atoms.

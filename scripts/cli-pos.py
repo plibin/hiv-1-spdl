@@ -15,7 +15,7 @@ def main():
     parser = argparse.ArgumentParser(description="CLI for positional statistics.")
     parser.add_argument("--base-path", "-b", required=True)
     parser.add_argument("--protein", "-p", required=True)
-    parser.add_argument("--stat", "-s", choices=["rmsd", "plddt"], required=True)
+    parser.add_argument("--stat", "-s", choices=["rmsd", "sc-rmsd", "plddt"], required=True)
     parser.add_argument("--alignment", "-a", required=True)
 
     args = parser.parse_args()
@@ -50,6 +50,9 @@ def main():
             if args.stat == "rmsd":
                 pos_to_rmsd = rmsd.per_residue_rmsd(ref, r_align, p_align, r_chain, p_chain)
                 rows = [{"pos": pos + 1, "RMSD": rmsd_value} for pos, rmsd_value in pos_to_rmsd.items()]
+            elif args.stat == "sc-rmsd":
+                pos_to_sc_rmsd = rmsd.per_residue_sidechain_rmsd(ref, r_align, p_align, r_chain, p_chain)
+                rows = [{"pos": pos + 1, "scRMSD": sc_rmsd_value} for pos, sc_rmsd_value in pos_to_sc_rmsd.items()]
             elif args.stat == "plddt":
                 pos_to_plddt = plddt.per_residue_plddt(ref, r_align, p_align, r_chain, p_chain)
                 rows = [{"pos": pos + 1, "pLDDT": plddt_value} for pos, plddt_value in pos_to_plddt.items()]

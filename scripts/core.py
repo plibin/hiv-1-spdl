@@ -32,6 +32,21 @@ AA_OVERRIDES = {
     "OCS": "CYS",
 }
 
+BACKBONE_ATOM_NAMES = {"N", "CA", "C", "O", "OXT"}
+
+
+def _atom_name(atom: Atom.Atom) -> str:
+    return atom.get_name().strip().upper()
+
+
+def _is_hydrogen(atom: Atom.Atom) -> bool:
+    element = (getattr(atom, "element", "") or "").strip().upper()
+    return element == "H" or _atom_name(atom).startswith("H")
+
+
+def _is_sidechain_heavy_atom(atom: Atom.Atom) -> bool:
+    return _atom_name(atom) not in BACKBONE_ATOM_NAMES and not _is_hydrogen(atom)
+
 
 def squared_diffs_between_residues(ref_r: Residue.Residue, pred_r: Residue.Residue) -> list[float]:
     # Since we assume alignment, the overlap should be perfect,
@@ -40,6 +55,33 @@ def squared_diffs_between_residues(ref_r: Residue.Residue, pred_r: Residue.Resid
     names = set(a.get_name() for a in ref_r) & set(a.get_name() for a in pred_r)
     if not names:
         raise ValueError(f"No common atoms found between residues {ref_r} and {pred_r}")
+
+    squared_diffs = []
+    for n in names:
+        v = ref_r[n].get_coord() - pred_r[n].get_coord()
+        squared_diffs.append(np.dot(v, v))
+    return squared_diffs
+
+
+def squared_diffs_between_sidechain_heavy_atoms(
+        ref_r: Residue.Residue,
+        pred_r: Residue.Residue,
+) -> list[float]:
+    # Since we assume alignment, the overlap should be perfect,
+    # but to be robust for missing artefacts in the ground truth PDB,
+    # we follow this approach.
+    names = set(a.get_name() for a in ref_r) & set(a.get_name() for a in pred_r)
+
+    names = {
+        name for name in names
+        if _is_sidechain_heavy_atom(ref_r[name]) and _is_sidechain_heavy_atom(pred_r[name])
+    }
+
+    # Some residues, such as glycine or residues with unresolved side-chain atoms,
+    # have no comparable side-chain heavy atoms. Treat these as missing values
+    # rather than failing the full positional analysis.
+    if not names:
+        return []
 
     squared_diffs = []
     for n in names:
