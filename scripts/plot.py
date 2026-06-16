@@ -137,6 +137,16 @@ def _format_pos_ax(ax, ylabel):
     ax.grid(True, linestyle="--", alpha=0.4, zorder=0)
 
 
+def plot_sc_rmsd(df, protein: str, plot_sec_struct: bool = True, figsize: tuple = (15, 5)):
+    fig, ax = plt.subplots(figsize=figsize)
+    if plot_sec_struct:
+        _plot_secondary_structure_background(ax, protein)
+    sns.lineplot(data=df, x="pos", y="scRMSD", hue="Algorithm", palette=ALGORITHM_COLORS)
+    _build_positional_legend(ax, with_sec_struct=plot_sec_struct)
+    _format_pos_ax(ax, "scRMSD")
+    fig.tight_layout()
+
+
 def plot_rmsd(df, protein: str, plot_sec_struct: bool = True, figsize: tuple = (15, 5)):
     fig, ax = plt.subplots(figsize=figsize)
     if plot_sec_struct:
@@ -245,7 +255,7 @@ def main():
     parser.add_argument("--csv_path2", type=Path, default=None,
                         help="Second CSV path (pLDDT CSV for --type correlation)")
     parser.add_argument("--type",
-                        choices=["rmsd", "plddt", "grmsd", "tm", "correlation"],
+                        choices=["rmsd", "sc-rmsd", "plddt", "grmsd", "tm", "correlation"],
                         required=True,
                         help="Type of plot to generate")
     parser.add_argument("--protein", choices=["PR", "IN", "RT"], required=True,
@@ -259,6 +269,8 @@ def main():
     df = pd.read_csv(args.csv_path)
     if args.type == "rmsd":
         plot_rmsd(df, plot_sec_struct=True, protein=args.protein)
+    elif args.type == "sc-rmsd":
+        plot_sc_rmsd(df, plot_sec_struct=True, protein=args.protein)
     elif args.type == "plddt":
         plot_plddt(df, plot_sec_struct=True, protein=args.protein)
     elif args.type == "grmsd":
