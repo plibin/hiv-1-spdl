@@ -10,6 +10,7 @@ from statsmodels.stats.multicomp import pairwise_tukeyhsd
 
 VALUE_COLUMNS = {
     "rmsd": "RMSD",
+    "sc-rmsd": "scRMSD",
     "plddt": "pLDDT",
     "grmsd": "RMSD",
     "tm": "TM",
@@ -17,7 +18,7 @@ VALUE_COLUMNS = {
 
 # Positional types contain per-residue rows that must be aggregated before
 # running group-level statistics (see _aggregate_positional).
-_POSITIONAL_TYPES = {"rmsd", "plddt"}
+_POSITIONAL_TYPES = {"rmsd", "sc-rmsd", "plddt"}
 
 ALPHA = 0.05
 _SHAPIRO_MAX_N = 5000
