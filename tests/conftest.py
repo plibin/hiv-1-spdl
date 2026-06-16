@@ -63,3 +63,49 @@ def make_chain():
 @pytest.fixture
 def sample_chain(make_chain) -> Chain.Chain:
     return make_chain("AGS")
+
+
+@pytest.fixture
+def make_chain_with_cb():
+    """Like make_chain but each non-GLY residue also gets a CB sidechain atom.
+
+    cb_coords: optional per-residue absolute CB coordinate, given as a list of
+               (x, y, z) tuples (one per residue, 0-indexed).  When provided,
+               the value at position i is used as the CB coordinate for residue
+               i+1.  Pass None at a position to fall back to the default
+               placement (CA + (0, 1, 0)).  GLY residues never receive a CB
+               regardless of what is passed.
+    """
+    def _make(
+        sequence: str,
+        *,
+        chain_id: str = "A",
+        cb_coords: Optional[list[Optional[tuple[float, float, float]]]] = None,
+    ) -> Chain.Chain:
+        chain = Chain.Chain(chain_id)
+        atom_serial = 1
+
+        for idx, aa in enumerate(sequence, start=1):
+            resname = _three_letter(aa)
+            res = Residue.Residue((" ", idx, " "), resname, " ")
+            base = np.array([(idx - 1) * 3.0, 0.0, 0.0], dtype=float)
+            ca_pos = base + np.array([1.0, 0.0, 0.0])
+
+            res.add(Atom.Atom("N",  base,                    0.0, 1.0, " ", "N", atom_serial, "N")); atom_serial += 1
+            res.add(Atom.Atom("CA", ca_pos,                  0.0, 1.0, " ", "C", atom_serial, "C")); atom_serial += 1
+            res.add(Atom.Atom("C",  base + [2.0, 0.0, 0.0], 0.0, 1.0, " ", "C", atom_serial, "C")); atom_serial += 1
+            res.add(Atom.Atom("O",  base + [2.0, 1.0, 0.0], 0.0, 1.0, " ", "O", atom_serial, "O")); atom_serial += 1
+
+            if aa != "G":
+                if cb_coords is not None and cb_coords[idx - 1] is not None:
+                    cb_pos = np.array(cb_coords[idx - 1], dtype=float)
+                else:
+                    cb_pos = ca_pos + np.array([0.0, 1.0, 0.0])
+                res.add(Atom.Atom("CB", cb_pos, 0.0, 1.0, " ", "C", atom_serial, "C"))
+                atom_serial += 1
+
+            chain.add(res)
+
+        return chain
+
+    return _make
