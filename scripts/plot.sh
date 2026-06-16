@@ -66,12 +66,16 @@ case "$scope" in
         csv_suffix="pos-rmsd"
         plot_type="rmsd"
         ;;
+      sc-rmsd)
+        csv_suffix="pos-sc-rmsd"
+        plot_type="sc-rmsd"
+        ;;
       plddt)
         csv_suffix="pos-plddt"
         plot_type="plddt"
         ;;
       *)
-        echo "Invalid stat for scope 'pos': $stat (use: rmsd|plddt)"
+        echo "Invalid stat for scope 'pos': $stat (use: rmsd|sc-rmsd|plddt)"
         exit 2
         ;;
     esac

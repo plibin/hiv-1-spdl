@@ -9,5 +9,6 @@ for protein in PR IN RT; do
   python3 "$script_dir/stats.py" --csv_path "${results_dir}/${protein}-global-rmsd.csv" --type grmsd
   python3 "$script_dir/stats.py" --csv_path "${results_dir}/${protein}-global-tm.csv"   --type tm
   python3 "$script_dir/stats.py" --csv_path "${results_dir}/${protein}-pos-rmsd.csv"    --type rmsd
+  python3 "$script_dir/stats.py" --csv_path "${results_dir}/${protein}-pos-sc-rmsd.csv" --type sc-rmsd
   python3 "$script_dir/stats.py" --csv_path "${results_dir}/${protein}-pos-plddt.csv"   --type plddt
 done

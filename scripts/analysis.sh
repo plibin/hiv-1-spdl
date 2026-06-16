@@ -4,3 +4,4 @@
 ./cli-global-tm.sh
 ./cli-pos-plddt.sh
 ./cli-pos-rmsd.sh
+./cli-pos-sc-rmsd.sh
