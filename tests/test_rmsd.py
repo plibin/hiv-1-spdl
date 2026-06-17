@@ -7,7 +7,7 @@ from Bio.PDB import Atom, Residue
 
 from scripts.core import squared_diffs_between_sidechain_heavy_atoms
 from scripts.plddt import per_residue_plddt
-from scripts.rmsd import global_rmsd, per_residue_rmsd, per_residue_sidechain_rmsd
+from scripts.rmsd import global_rmsd, global_all_atom_rmsd, per_residue_rmsd, per_residue_sidechain_rmsd
 
 
 def test_per_residue_rmsd_self_alignment_is_zero(sample_chain):
@@ -168,3 +168,89 @@ def test_per_residue_sc_rmsd_backbone_atoms_not_included(make_chain_with_cb):
 
     # CB positions are identical → scRMSD should be 0.0 at every position.
     assert all(math.isclose(v, 0.0) for v in result.values())
+
+
+# ── Unit + integration tests: global_all_atom_rmsd ───────────────────────────
+
+def test_global_all_atom_rmsd_self_is_zero(make_chain_with_cb):
+    """Identical full-atom chains → all-atom RMSD = 0.0."""
+    ref = make_chain_with_cb("AAS")
+    pred = copy.deepcopy(ref)
+
+    assert math.isclose(global_all_atom_rmsd("toy", "AAS", "AAS", ref, pred), 0.0, abs_tol=1e-9)
+
+
+def test_global_all_atom_rmsd_backbone_only_returns_nan(sample_chain):
+    """Backbone-only chains (no CB) → all-atom RMSD = NaN.
+
+    sample_chain contains only N/CA/C/O atoms, matching ESM3-Open and Ember3D.
+    """
+    pred = copy.deepcopy(sample_chain)
+
+    assert math.isnan(global_all_atom_rmsd("toy", "AGS", "AGS", sample_chain, pred))
+
+
+def test_global_all_atom_rmsd_positive_and_le_ca_superposition(make_chain_with_cb):
+    """When CB is displaced, all-atom RMSD is positive and ≤ Cα-superposition RMSD.
+
+    The Kabsch algorithm finds the rotation that minimises all-atom RMSD, so
+    global_all_atom_rmsd (optimal all-atom superposition) ≤ global_rmsd
+    (Cα superposition, which may be suboptimal for the full atom set).
+    The inequality can be strict when Kabsch rotates slightly to reduce CB
+    error at the expense of small backbone error.
+    """
+    ref  = make_chain_with_cb("A")
+    pred = make_chain_with_cb("A", cb_coords=[(1.0, 5.0, 0.0)])  # CB shifted +4 on y
+
+    aa_result = global_all_atom_rmsd("toy", "A", "A", ref, pred)
+    ca_result = global_rmsd("toy", "A", "A", ref, pred)
+
+    assert math.isfinite(aa_result)
+    assert aa_result > 0.0
+    assert aa_result <= ca_result + 1e-9
+
+
+def test_global_all_atom_rmsd_le_global_rmsd(make_chain_with_cb):
+    """All-atom superposition gives RMSD ≤ Cα-superposition all-atom RMSD.
+
+    The all-atom Kabsch superposition minimises the all-atom RMSD, so its
+    result must be ≤ global_rmsd (which uses Cα superposition).  The
+    inequality may be an equality when the two superpositions coincide (e.g.
+    identical backbone), but must never be strictly greater.
+    """
+    ref  = make_chain_with_cb("AAST")
+    pred = copy.deepcopy(ref)
+
+    # Displace CB atoms by different amounts to create non-trivial sidechain error.
+    residues = list(pred.get_residues())
+    for i, res in enumerate(residues):
+        if "CB" in res:
+            res["CB"].set_coord(res["CB"].get_coord() + np.array([float(i + 1) * 2.0, 0.0, 0.0]))
+
+    aa_rmsd  = global_all_atom_rmsd("toy", "AAST", "AAST", ref, pred)
+    ca_rmsd  = global_rmsd("toy", "AAST", "AAST", ref, pred)
+
+    assert math.isfinite(aa_rmsd)
+    assert aa_rmsd <= ca_rmsd + 1e-9  # allow floating-point tolerance
+
+
+def test_global_all_atom_rmsd_does_not_mutate_input(make_chain_with_cb):
+    """global_all_atom_rmsd must not mutate the pred chain passed by the caller."""
+    ref  = make_chain_with_cb("AS")
+    pred = make_chain_with_cb("AS", cb_coords=[(2.0, 0.0, 0.0), (5.0, 0.0, 0.0)])
+
+    # Key by (residue seq_id, atom_name) to uniquely identify each atom.
+    original_coords = {
+        (r.get_id()[1], a.get_name()): a.get_coord().copy()
+        for r in pred.get_residues()
+        for a in r.get_atoms()
+    }
+
+    global_all_atom_rmsd("toy", "AS", "AS", ref, pred)
+
+    for r in pred.get_residues():
+        for a in r.get_atoms():
+            key = (r.get_id()[1], a.get_name())
+            assert np.allclose(a.get_coord(), original_coords[key]), (
+                f"Atom {key} was mutated by global_all_atom_rmsd"
+            )

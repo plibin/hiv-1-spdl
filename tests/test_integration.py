@@ -3,7 +3,7 @@ from Bio import SeqIO
 
 from scripts.myio import _first_chain, _first_model, parse_structure_pdb
 from scripts.plddt import per_residue_plddt
-from scripts.rmsd import global_rmsd, per_residue_rmsd, per_residue_sidechain_rmsd
+from scripts.rmsd import global_rmsd, global_all_atom_rmsd, per_residue_rmsd, per_residue_sidechain_rmsd
 from scripts.tm import global_tm
 
 
@@ -103,3 +103,34 @@ def test_sc_rmsd_integration_backbone_only_model_all_nan(pr_7leg_alignment, pr_7
     assert all(math.isnan(v) for v in result.values()), (
         "ESM3-Open backbone-only predictions should yield NaN at every position"
     )
+
+
+def test_global_all_atom_rmsd_integration_full_atom_model(pr_7leg_alignment, pr_7leg_chains):
+    """AlphaFold2 (full-atom): all-atom RMSD is finite, non-negative, and ≤ global_rmsd.
+
+    The all-atom superposition minimises the all-atom RMSD, so it must be
+    ≤ the Cα-superposition all-atom RMSD returned by global_rmsd.
+    """
+    import math
+    ref_align, pred_align = pr_7leg_alignment
+    ref_chain, pred_chain = pr_7leg_chains
+
+    aa_rmsd = global_all_atom_rmsd("7LEG", ref_align, pred_align, ref_chain, pred_chain)
+    ca_rmsd = global_rmsd("7LEG", ref_align, pred_align, ref_chain, pred_chain)
+
+    assert math.isfinite(aa_rmsd), "AlphaFold2 all-atom RMSD should be finite"
+    assert aa_rmsd >= 0.0, "RMSD must be non-negative"
+    assert aa_rmsd <= ca_rmsd + 1e-9, (
+        f"All-atom RMSD ({aa_rmsd:.4f}) must be ≤ Cα RMSD ({ca_rmsd:.4f})"
+    )
+
+
+def test_global_all_atom_rmsd_integration_backbone_only_model(pr_7leg_alignment, pr_7leg_chains_backbone_only):
+    """ESM3-Open (backbone-only): all-atom RMSD must return NaN."""
+    import math
+    ref_align, pred_align = pr_7leg_alignment
+    ref_chain, pred_chain = pr_7leg_chains_backbone_only
+
+    result = global_all_atom_rmsd("7LEG", ref_align, pred_align, ref_chain, pred_chain)
+
+    assert math.isnan(result), "ESM3-Open backbone-only prediction should yield NaN for all-atom RMSD"
