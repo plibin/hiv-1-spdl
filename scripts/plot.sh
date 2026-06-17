@@ -90,8 +90,12 @@ case "$scope" in
         csv_suffix="global-tm"
         plot_type="tm"
         ;;
+      all-atom-rmsd)
+        csv_suffix="global-all-atom-rmsd"
+        plot_type="all-atom-rmsd"
+        ;;
       *)
-        echo "Invalid stat for scope 'global': $stat (use: rmsd|tm)"
+        echo "Invalid stat for scope 'global': $stat (use: rmsd|tm|all-atom-rmsd)"
         exit 2
         ;;
     esac
