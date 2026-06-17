@@ -14,7 +14,7 @@ def main():
     parser = argparse.ArgumentParser(description="CLI for global statistics.")
     parser.add_argument("--base-path", "-b", required=True)
     parser.add_argument("--protein", "-p", required=True)
-    parser.add_argument("--stat", "-s", choices=["rmsd", "tm"], required=True)
+    parser.add_argument("--stat", "-s", choices=["rmsd", "tm", "all-atom-rmsd"], required=True)
     parser.add_argument("--alignment", "-a", required=True)
 
     args = parser.parse_args()
@@ -52,6 +52,9 @@ def main():
             elif args.stat == "tm":
                 g_tm = tm.global_tm(ref, r_align, p_align, r_chain, p_chain)
                 row["TM"] = g_tm
+            elif args.stat == "all-atom-rmsd":
+                g_aa_rmsd = rmsd.global_all_atom_rmsd(ref, r_align, p_align, r_chain, p_chain)
+                row["allAtomRMSD"] = g_aa_rmsd
 
             row["Algorithm"] = algorithm
             row["ref"] = ref

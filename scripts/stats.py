@@ -14,6 +14,7 @@ VALUE_COLUMNS = {
     "plddt": "pLDDT",
     "grmsd": "RMSD",
     "tm": "TM",
+    "all-atom-rmsd": "allAtomRMSD",
 }
 
 # Positional types contain per-residue rows that must be aggregated before

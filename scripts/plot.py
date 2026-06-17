@@ -1,3 +1,5 @@
+import sys
+
 import argparse
 from pathlib import Path
 
@@ -65,6 +67,27 @@ class _SubtitleHandler(HandlerBase):
     def legend_artist(self, legend, orig_handle, fontsize, handlebox):
         handlebox.set_visible(False)
         return handlebox
+
+
+def _drop_all_nan_algorithms(df: pd.DataFrame, value_col: str) -> pd.DataFrame:
+    """Remove algorithms whose every value in value_col is NaN.
+
+    This handles metrics that are structurally inapplicable to certain models
+    (e.g. all-atom/sidechain RMSD for backbone-only ESM3-Open and Ember3D,
+    pLDDT for ESM3 models that do not output confidence scores).
+
+    The exclusion is data-driven: it reacts to what is actually in the CSV
+    rather than checking against a hardcoded list of algorithm names, so new
+    models are handled automatically without code changes.
+
+    A warning is printed to stderr for each dropped algorithm so the exclusion
+    is visible in shell logs.
+    """
+    keep = df.groupby("Algorithm")[value_col].apply(lambda s: s.notna().any())
+    dropped = keep.index[~keep].tolist()
+    for algo in dropped:
+        print(f"Warning: excluding '{algo}' from plot — all '{value_col}' values are NaN.", file=sys.stderr)
+    return df[df["Algorithm"].isin(keep.index[keep])].copy()
 
 
 def _plot_secondary_structure_background(ax, protein: str) -> None:
@@ -138,6 +161,7 @@ def _format_pos_ax(ax, ylabel):
 
 
 def plot_sc_rmsd(df, protein: str, plot_sec_struct: bool = True, figsize: tuple = (15, 5)):
+    df = _drop_all_nan_algorithms(df, "scRMSD")
     fig, ax = plt.subplots(figsize=figsize)
     if plot_sec_struct:
         _plot_secondary_structure_background(ax, protein)
@@ -148,6 +172,7 @@ def plot_sc_rmsd(df, protein: str, plot_sec_struct: bool = True, figsize: tuple 
 
 
 def plot_rmsd(df, protein: str, plot_sec_struct: bool = True, figsize: tuple = (15, 5)):
+    df = _drop_all_nan_algorithms(df, "RMSD")
     fig, ax = plt.subplots(figsize=figsize)
     if plot_sec_struct:
         _plot_secondary_structure_background(ax, protein)
@@ -162,8 +187,7 @@ def plot_plddt(df, protein: str, plot_sec_struct: bool = True, figsize: tuple = 
     if plot_sec_struct:
         _plot_secondary_structure_background(ax, protein)
 
-    # Exclude ESM3-Open and ESM3-Large from the positional pLDDT plot.
-    df = df[~df["Algorithm"].isin(["ESM3-Open", "ESM3-Large"])].copy()
+    df = _drop_all_nan_algorithms(df, "pLDDT")
 
     sns.lineplot(data=df, x="pos", y="pLDDT", hue="Algorithm", palette=ALGORITHM_COLORS)
     _build_positional_legend(ax, with_sec_struct=plot_sec_struct)
@@ -180,6 +204,14 @@ def plot_correlation(df_rmsd: pd.DataFrame, df_plddt: pd.DataFrame, figsize: tup
     for ax, algo in zip(axes.flatten(), CORRELATION_ALGORITHMS):
         sub = df[df["Algorithm"] == algo]
         color = ALGORITHM_COLORS.get(algo, "#888888")
+
+        if sub.empty or sub["RMSD"].isna().all() or sub["pLDDT"].isna().all():
+            ax.set_title(algo, fontsize=14, fontweight="bold")
+            ax.text(0.5, 0.5, "no data", transform=ax.transAxes,
+                    ha="center", va="center", fontsize=12, color="grey")
+            ax.set_axis_off()
+            continue
+
         ax.scatter(sub["pLDDT"], sub["RMSD"], alpha=0.3, s=10, edgecolors="none", color=color)
 
         # Linear regression fit line.
@@ -237,6 +269,7 @@ def plot_correlation(df_rmsd: pd.DataFrame, df_plddt: pd.DataFrame, figsize: tup
 
 
 def plot_global_boxplot(df, value_col: str, ytick_interval: float | None = None):
+    df = _drop_all_nan_algorithms(df, value_col)
     fig, ax = plt.subplots()
     order = [a for a in ALGORITHM_COLORS if a in df["Algorithm"].unique()]
     palette = {a: ALGORITHM_COLORS[a] for a in order}
@@ -255,7 +288,7 @@ def main():
     parser.add_argument("--csv_path2", type=Path, default=None,
                         help="Second CSV path (pLDDT CSV for --type correlation)")
     parser.add_argument("--type",
-                        choices=["rmsd", "sc-rmsd", "plddt", "grmsd", "tm", "correlation"],
+                        choices=["rmsd", "sc-rmsd", "plddt", "grmsd", "tm", "all-atom-rmsd", "correlation"],
                         required=True,
                         help="Type of plot to generate")
     parser.add_argument("--protein", choices=["PR", "IN", "RT"], required=True,
@@ -275,6 +308,8 @@ def main():
         plot_plddt(df, plot_sec_struct=True, protein=args.protein)
     elif args.type == "grmsd":
         plot_global_boxplot(df, "RMSD", ytick_interval=args.ytick_interval)
+    elif args.type == "all-atom-rmsd":
+        plot_global_boxplot(df, "allAtomRMSD", ytick_interval=args.ytick_interval)
     elif args.type == "tm":
         plot_global_boxplot(df, "TM", ytick_interval=args.ytick_interval)
     elif args.type == "correlation":

@@ -159,6 +159,39 @@ def _resolve_start_motif(ref_align, pred_align, align_start: int, motif_size: in
     return motif
 
 
+def _ca_atom_pairs(
+        ref_selection: List[Residue.Residue],
+        pred_selection: List[Residue.Residue],
+) -> tuple[List[Atom.Atom], List[Atom.Atom]]:
+    """Return parallel CA-atom lists for Cα-based superposition (default)."""
+    return [r["CA"] for r in ref_selection], [r["CA"] for r in pred_selection]
+
+
+def _heavy_atom_pairs(
+        ref_selection: List[Residue.Residue],
+        pred_selection: List[Residue.Residue],
+) -> tuple[List[Atom.Atom], List[Atom.Atom]]:
+    """Return parallel heavy-atom lists for all-atom superposition.
+
+    For each aligned residue pair the intersection of non-hydrogen atom names
+    is collected in deterministic (sorted) order.  Atoms present in only one
+    residue (unresolved sidechain atoms in the experimental structure, extra
+    terminal OXT, etc.) are silently skipped, consistent with the intersection
+    strategy used throughout the existing squared_diffs helpers.
+    """
+    ref_atoms: List[Atom.Atom] = []
+    pred_atoms: List[Atom.Atom] = []
+    for ref_r, pred_r in zip(ref_selection, pred_selection):
+        common = sorted(
+            {a.get_name() for a in ref_r if not _is_hydrogen(a)}
+            & {a.get_name() for a in pred_r if not _is_hydrogen(a)}
+        )
+        for name in common:
+            ref_atoms.append(ref_r[name])
+            pred_atoms.append(pred_r[name])
+    return ref_atoms, pred_atoms
+
+
 def stat_per_residue(id_: str,
                      ref_align, pred_align,
                      ref_chain: Chain.Chain, pred_chain: Chain.Chain,
@@ -253,3 +286,80 @@ def stat_per_residue(id_: str,
 
     #5. Return a dict of position with their corresponding score as computed by stat().
     return stats
+
+
+def stat_global(
+        id_: str,
+        ref_align, pred_align,
+        ref_chain: Chain.Chain, pred_chain: Chain.Chain,
+        stat: Callable[[List[Residue.Residue], List[Residue.Residue]], float],
+        superposition_atoms: Callable[
+            [List[Residue.Residue], List[Residue.Residue]],
+            tuple[List[Atom.Atom], List[Atom.Atom]],
+        ] = _ca_atom_pairs,
+) -> float:
+    """Align two chains, superpose, and compute a scalar metric over all aligned residues.
+
+    Mirrors the alignment and chain-walking logic of stat_per_residue but
+    accepts a stat callback with signature (ref_selection, pred_selection) → float,
+    giving the callback access to the full paired residue lists rather than one
+    pair at a time.  The superposition_atoms parameter controls which atoms are
+    used to compute the optimal rigid-body transform; the default _ca_atom_pairs
+    reproduces the Cα-only behaviour.  Pass _heavy_atom_pairs for an all-atom
+    superposition.
+
+    This addition changes no existing functions.
+    """
+    # Deep copy the predicted chain to avoid in-place mutation side effects.
+    pred_chain = copy.deepcopy(pred_chain)
+
+    ref_residues = aa_residues(ref_chain)
+    pred_residues = aa_residues(pred_chain)
+
+    align_start, align_len = _find_alignment_start(ref_align, pred_align)
+    motif = _resolve_start_motif(ref_align, pred_align, align_start)
+
+    ref_res = first_motif_res(id_, ref_chain, motif)
+    pred_res = first_motif_res(id_, pred_chain, motif)
+
+    ref_selection: List[Residue.Residue] = []
+    pred_selection: List[Residue.Residue] = []
+
+    for i in range(align_start, align_len):
+        if pred_align[i] == '-' and ref_align[i] == '-':
+            continue
+        if pred_align[i] == '-' and ref_align[i] != '-':
+            raise RuntimeError(f"Unexpected gap in pred at pos {i} for id {id_}")
+        if pred_align[i] != '-' and ref_align[i] == '-':
+            pred_res = next_res(pred_chain, pred_res)
+            continue
+
+        if pred_align[i] != ref_align[i]:
+            print(f"{id_}: Query {pred_align[i]} and PDB {ref_align[i]} don't match in the alignment at pos {i}",
+                  file=sys.stderr)
+
+        if ref_res is None or pred_res is None:
+            raise RuntimeError("Missing residues")
+
+        ref_res_aa = _res_aa_letter(ref_res)
+        pred_res_aa = _res_aa_letter(pred_res)
+        if ref_res_aa != pred_res_aa:
+            print(f"{id_}: ref_aa {ref_res_aa} and pred_aa {pred_res_aa} don't match in the PDB at pos {i}",
+                  file=sys.stderr)
+
+        if "CA" in ref_res and "CA" in pred_res:
+            ref_selection.append(ref_res)
+            pred_selection.append(pred_res)
+            pred_res = next_res(pred_chain, pred_res)
+            ref_res = next_res(ref_chain, ref_res)
+        else:
+            raise RuntimeError("No CA atom in amino acid!")
+
+    sup = Superimposer()
+    ref_sup_atoms, pred_sup_atoms = superposition_atoms(ref_selection, pred_selection)
+    sup.set_atoms(ref_sup_atoms, pred_sup_atoms)
+    # Apply transform to every atom in all pred residues so the whole chain moves.
+    all_pred_atoms = [a for r in pred_residues for a in r.get_atoms()]
+    sup.apply(all_pred_atoms)
+
+    return stat(ref_selection, pred_selection)
