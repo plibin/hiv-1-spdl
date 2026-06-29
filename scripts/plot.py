@@ -182,6 +182,17 @@ def plot_rmsd(df, protein: str, plot_sec_struct: bool = True, figsize: tuple = (
     fig.tight_layout()
 
 
+def plot_aa_rmsd(df, protein: str, plot_sec_struct: bool = True, figsize: tuple = (15, 5)):
+    df = _drop_all_nan_algorithms(df, "aaRMSD")
+    fig, ax = plt.subplots(figsize=figsize)
+    if plot_sec_struct:
+        _plot_secondary_structure_background(ax, protein)
+    sns.lineplot(data=df, x="pos", y="aaRMSD", hue="Algorithm", palette=ALGORITHM_COLORS)
+    _build_positional_legend(ax, with_sec_struct=plot_sec_struct)
+    _format_pos_ax(ax, "All-Atom RMSD")
+    fig.tight_layout()
+
+
 def plot_plddt(df, protein: str, plot_sec_struct: bool = True, figsize: tuple = (15, 5)):
     fig, ax = plt.subplots(figsize=figsize)
     if plot_sec_struct:
@@ -288,7 +299,7 @@ def main():
     parser.add_argument("--csv_path2", type=Path, default=None,
                         help="Second CSV path (pLDDT CSV for --type correlation)")
     parser.add_argument("--type",
-                        choices=["rmsd", "sc-rmsd", "plddt", "grmsd", "tm", "all-atom-rmsd", "correlation"],
+                        choices=["rmsd", "sc-rmsd", "plddt", "pos-aa-rmsd", "grmsd", "tm", "all-atom-rmsd", "correlation"],
                         required=True,
                         help="Type of plot to generate")
     parser.add_argument("--protein", choices=["PR", "IN", "RT"], required=True,
@@ -306,6 +317,8 @@ def main():
         plot_sc_rmsd(df, plot_sec_struct=True, protein=args.protein)
     elif args.type == "plddt":
         plot_plddt(df, plot_sec_struct=True, protein=args.protein)
+    elif args.type == "pos-aa-rmsd":
+        plot_aa_rmsd(df, plot_sec_struct=True, protein=args.protein)
     elif args.type == "grmsd":
         plot_global_boxplot(df, "RMSD", ytick_interval=args.ytick_interval)
     elif args.type == "all-atom-rmsd":

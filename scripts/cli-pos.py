@@ -15,7 +15,7 @@ def main():
     parser = argparse.ArgumentParser(description="CLI for positional statistics.")
     parser.add_argument("--base-path", "-b", required=True)
     parser.add_argument("--protein", "-p", required=True)
-    parser.add_argument("--stat", "-s", choices=["rmsd", "sc-rmsd", "plddt"], required=True)
+    parser.add_argument("--stat", "-s", choices=["rmsd", "sc-rmsd", "plddt", "aa-rmsd"], required=True)
     parser.add_argument("--alignment", "-a", required=True)
 
     args = parser.parse_args()
@@ -56,6 +56,9 @@ def main():
             elif args.stat == "plddt":
                 pos_to_plddt = plddt.per_residue_plddt(ref, r_align, p_align, r_chain, p_chain)
                 rows = [{"pos": pos + 1, "pLDDT": plddt_value} for pos, plddt_value in pos_to_plddt.items()]
+            elif args.stat == "aa-rmsd":
+                pos_to_aa_rmsd = rmsd.per_residue_all_atom_rmsd(ref, r_align, p_align, r_chain, p_chain)
+                rows = [{"pos": pos + 1, "aaRMSD": aa_rmsd_value} for pos, aa_rmsd_value in pos_to_aa_rmsd.items()]
 
             df = pd.DataFrame(rows)
             df["Algorithm"] = algorithm

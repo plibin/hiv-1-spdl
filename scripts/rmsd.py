@@ -39,6 +39,26 @@ def per_residue_sidechain_rmsd(id_: str,
                                  _sidechain_heavy_atom_rmsd_between_residues)
 
 
+def per_residue_all_atom_rmsd(id_: str,
+                              ref_align, pred_align,
+                              ref_chain: Chain.Chain, pred_chain: Chain.Chain) -> dict[int, float]:
+    has_sidechain = any(
+        core._is_sidechain_heavy_atom(a)
+        for r in pred_chain.get_residues()
+        for a in r.get_atoms()
+        if not core._is_hydrogen(a)
+    )
+    if not has_sidechain:
+        print(f"Warning: {id_} prediction has no sidechain heavy atoms; all-atom RMSD not applicable.", file=__import__("sys").stderr)
+        return core.stat_per_residue(id_, ref_align, pred_align, ref_chain, pred_chain,
+                                     lambda r1, r2: float("nan"),
+                                     superposition_atoms=core._ca_atom_pairs)
+
+    return core.stat_per_residue(id_, ref_align, pred_align, ref_chain, pred_chain,
+                                 _rmsd_between_residues,
+                                 superposition_atoms=core._heavy_atom_pairs)
+
+
 # Note: This computes the RMSD of all common atoms after superposition on CA atoms.
 # This metric evaluates how well the side-chains align given the backbone alignment.
 # The global RMSD computed here is the root-mean-square of the per-residue mean squared deviations,

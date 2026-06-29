@@ -195,7 +195,11 @@ def _heavy_atom_pairs(
 def stat_per_residue(id_: str,
                      ref_align, pred_align,
                      ref_chain: Chain.Chain, pred_chain: Chain.Chain,
-                     stat: Callable[[Residue.Residue, Residue.Residue], float]) -> dict[int, float]:
+                     stat: Callable[[Residue.Residue, Residue.Residue], float],
+                     superposition_atoms: Callable[
+                         [List[Residue.Residue], List[Residue.Residue]],
+                         tuple[List[Atom.Atom], List[Atom.Atom]],
+                     ] = _ca_atom_pairs) -> dict[int, float]:
     # Deep copy the predicted chain to avoid in-place mutation side effects
     pred_chain = copy.deepcopy(pred_chain)
 
@@ -270,11 +274,10 @@ def stat_per_residue(id_: str,
     # https://cgmartini.nl/docs/tutorials/Martini3/ProteinsI/Tut2.html ; https://pmc.ncbi.nlm.nih.gov/articles/PMC4321859/ --> calculating based on CA
     sup = Superimposer()
 
-    #Extract CA atoms
-    ref_cas = [x["CA"] for x in ref_selection]
-    pred_cas = [x["CA"] for x in pred_selection]
+    #Extract atoms for superposition
+    ref_sup_atoms, pred_sup_atoms = superposition_atoms(ref_selection, pred_selection)
 
-    sup.set_atoms(ref_cas, pred_cas)
+    sup.set_atoms(ref_sup_atoms, pred_sup_atoms)
     # Apply transform to every atom in pred residues to ensure the whole chain moves
     all_pred_atoms = [a for r in pred_residues for a in r.get_atoms()]
     sup.apply(all_pred_atoms)

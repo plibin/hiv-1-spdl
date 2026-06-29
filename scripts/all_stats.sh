@@ -12,4 +12,5 @@ for protein in PR IN RT; do
   python3 "$script_dir/stats.py" --csv_path "${results_dir}/${protein}-pos-rmsd.csv"             --type rmsd
   python3 "$script_dir/stats.py" --csv_path "${results_dir}/${protein}-pos-sc-rmsd.csv"          --type sc-rmsd
   python3 "$script_dir/stats.py" --csv_path "${results_dir}/${protein}-pos-plddt.csv"            --type plddt
+  python3 "$script_dir/stats.py" --csv_path "${results_dir}/${protein}-pos-aa-rmsd.csv"          --type pos-aa-rmsd
 done
