@@ -1,4 +1,5 @@
 import sys
+import textwrap
 
 import argparse
 from pathlib import Path
@@ -279,6 +280,57 @@ def plot_correlation(df_rmsd: pd.DataFrame, df_plddt: pd.DataFrame, figsize: tup
     fig.tight_layout(rect=[0, 0.04, 1, 1])
 
 
+def plot_sites_boxplot(df, protein: str, sites_file: Path, value_col: str, figsize: tuple = (10, 6)):
+    df = _drop_all_nan_algorithms(df, value_col)
+    
+    sites = {}
+    df_sites = pd.read_csv(sites_file)
+    df_sites = df_sites[df_sites["enzyme"].str.upper() == protein.upper()]
+    for site_name, group in df_sites.groupby("site_name"):
+        wrapped_name = "\n".join(textwrap.wrap(site_name, width=15))
+        sites[wrapped_name] = set(group["residue_number"].astype(int))
+
+    dfs = []
+    for site_name, positions in sites.items():
+        site_df = df[df["pos"].isin(positions)]
+        if site_df.empty:
+            continue
+        avg = site_df.groupby(["Algorithm", "ref"], as_index=False)[value_col].mean()
+        avg["Site"] = site_name
+        dfs.append(avg)
+
+    if not dfs:
+        print(f"No functional site data found for {protein}.", file=sys.stderr)
+        return
+
+    plot_df = pd.concat(dfs, ignore_index=True)
+    
+    order = [a for a in ALGORITHM_COLORS if a in plot_df["Algorithm"].unique()]
+    palette = {a: ALGORITHM_COLORS[a] for a in order}
+
+    fig, ax = plt.subplots(figsize=figsize)
+    sns.boxplot(
+        data=plot_df,
+        x="Site",
+        y=value_col,
+        hue="Algorithm",
+        hue_order=order,
+        palette=palette,
+        showfliers=False,
+        ax=ax
+    )
+
+    y_label = f"{value_col} (Å)" if "RMSD" in value_col else value_col
+    ax.set_ylabel(y_label, fontsize=14)
+    ax.set_xlabel("", fontsize=14)
+    ax.tick_params(axis="x", rotation=0, labelsize=11)
+    ax.tick_params(axis="y", labelsize=11)
+    ax.grid(True, linestyle="--", alpha=0.4, axis="y")
+    
+    ax.legend(bbox_to_anchor=(1.02, 1), loc="upper left", borderaxespad=0, title="Algorithm", fontsize=12, title_fontsize=13)
+    fig.tight_layout()
+
+
 def plot_global_boxplot(df, value_col: str, ytick_interval: float | None = None):
     df = _drop_all_nan_algorithms(df, value_col)
     fig, ax = plt.subplots()
@@ -298,8 +350,10 @@ def main():
     parser.add_argument("--csv_path", type=Path, help="Path to the CSV file", required=True)
     parser.add_argument("--csv_path2", type=Path, default=None,
                         help="Second CSV path (pLDDT CSV for --type correlation)")
+    parser.add_argument("--sites_csv", type=Path, default=None,
+                        help="CSV path for functional sites (for --type sites-boxplot)")
     parser.add_argument("--type",
-                        choices=["rmsd", "sc-rmsd", "plddt", "pos-aa-rmsd", "grmsd", "tm", "all-atom-rmsd", "correlation"],
+                        choices=["rmsd", "sc-rmsd", "plddt", "pos-aa-rmsd", "grmsd", "tm", "all-atom-rmsd", "correlation", "sites-boxplot"],
                         required=True,
                         help="Type of plot to generate")
     parser.add_argument("--protein", choices=["PR", "IN", "RT"], required=True,
@@ -330,6 +384,11 @@ def main():
             parser.error("--csv_path2 (pLDDT CSV) is required for --type correlation")
         df_plddt = pd.read_csv(args.csv_path2)
         plot_correlation(df, df_plddt)
+    elif args.type == "sites-boxplot":
+        if not args.sites_csv:
+            parser.error("--sites_csv is required for --type sites-boxplot")
+        value_col = [c for c in df.columns if c not in ("pos", "Algorithm", "ref")][0]
+        plot_sites_boxplot(df, args.protein, args.sites_csv, value_col)
 
     out = args.output if args.output else (args.csv_path.stem + ".png")
     plt.savefig(out, format="png", dpi=500, bbox_inches="tight")
