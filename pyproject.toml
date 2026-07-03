@@ -1,0 +1,16 @@
+[project]
+name = "hiv-1-spdl"
+version = "0.1.0"
+requires-python = ">=3.12"
+dependencies = [
+    "biopython>=1.87",
+    "numpy>=2.5.0",
+    "meeko>=0.7.1",
+    "pdb2pqr>=3.7.1",
+    "gemmi>=0.7.5",
+    "prody>=2.6.1",
+    "pandas>=2.0.0",
+    "seaborn>=0.13.0",
+    "matplotlib>=3.7.0",
+    "pandas-stubs~=3.0.3",
+]

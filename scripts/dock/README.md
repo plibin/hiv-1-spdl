@@ -1,0 +1,5 @@
+- install dependencies (pyproject.toml)
+- install conda install -c conda-forge vina
+- ./prepare.sh
+- ./run.sh
+- python plot.py
