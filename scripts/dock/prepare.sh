@@ -1,3 +1,5 @@
+cp -r ../../data .
+
 data=./data
 
 #in the refs, we have experimental PDBs, so there might be quality issues,
